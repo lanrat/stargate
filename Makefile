@@ -14,5 +14,5 @@ fmt:
 docker: Dockerfile *.go go.mod
 	docker build -t lanrat/stargate .
 
-update:
-	go get -u
+deps:
+	go mod download

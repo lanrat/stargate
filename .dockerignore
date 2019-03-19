@@ -1,0 +1,7 @@
+.git
+.gitignore
+stargate
+Dockerfile
+LICENSE
+README.md
+go.sum
