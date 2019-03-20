@@ -15,8 +15,8 @@ func runProxy(proxyIP, listenAddr string) error {
 	}
 	conf := &socks5.Config{}
 	conf.Logger = l
+	d := net.Dialer{LocalAddr: proxyAddr}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		d := net.Dialer{LocalAddr: proxyAddr}
 		return d.DialContext(ctx, network, addr)
 	}
 	server, err := socks5.New(conf)

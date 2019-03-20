@@ -43,6 +43,6 @@ func main() {
 
 func check(err error) {
 	if err != nil {
-		log.Fatal(err)
+		l.Fatal(err)
 	}
 }
