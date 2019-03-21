@@ -25,3 +25,7 @@ The following will start 255 SOCKS proxies listening on 127.0.0.7 ports 10000-10
 ### [Docker](https://cloud.docker.com/repository/docker/lanrat/stargate)
 
 Stargate can be run inside Docker as well, but it will require fancy routing rules or `--net=host`.
+
+## Building
+
+Just run `make`!
