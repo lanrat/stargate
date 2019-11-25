@@ -1,4 +1,4 @@
-module stargate
+module github.com/lanrat/stargate
 
 require (
 	github.com/haxii/socks5 v0.0.0-20180506123323-b051d54cfefb
