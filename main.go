@@ -24,7 +24,7 @@ func init() {
 }
 
 func main() {
-	ips, err := Hosts(*proxy)
+	ips, err := hosts(*proxy)
 	check(err)
 
 	l.Printf("starting on %d IPs\n", len(ips))
