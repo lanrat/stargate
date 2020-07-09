@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -18,6 +19,7 @@ var (
 	port     = flag.Uint("port", 0, "first port to start listening on")
 	proxy    = flag.String("proxy", "127.0.0.1/32", "CIDR notation of proxy IPs")
 	random   = flag.Uint("random", 0, "port to use for random proxy server")
+	udp      = flag.Bool("udp", false, "run in UDP mode with support for associate")
 )
 
 func main() {
@@ -47,8 +49,9 @@ func main() {
 			listenPort := num + int(*port)
 			address := address // https://golang.org/doc/faq#closures_and_goroutines
 			work.Go(func() error {
-				l.Printf("Starting proxy %s:%d on IP: %s\n", *listenIP, listenPort, address.String())
-				return runProxy(address, fmt.Sprintf("%s:%d", *listenIP, listenPort))
+				addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(listenPort))
+				l.Printf("Starting proxy %s on IP: %s\n", addrStr, address.String())
+				return runProxy(address, addrStr)
 			})
 		}
 	}
@@ -57,8 +60,9 @@ func main() {
 	if *random != 0 {
 		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
-			l.Printf("Starting random egress proxy %s:%d\n", *listenIP, *random)
-			return runRandomProxy(addresses, fmt.Sprintf("%s:%d", *listenIP, *random))
+			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
+			l.Printf("Starting random egress proxy %s\n", addrStr)
+			return runRandomProxy(addresses, addrStr)
 		})
 	}
 

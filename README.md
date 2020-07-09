@@ -1,6 +1,6 @@
 # Stargate
 
-Stargate runs TCP SOCKS proxies on different ports egressing on sequential IPs in the same subnet.
+Stargate runs SOCKS proxies on different ports egressing on sequential IPs in the same subnet.
 This requires the host running stargate to have the subnet routed directly to it.
 
 If you have an IPv6 subnet, stargate can allow you to make full use of it by any program that can speak SOCKS.
@@ -17,6 +17,8 @@ Usage of ./stargate:
         CIDR notation of proxy IPs (default "127.0.0.1/32")
   -random uint
         port to use for random proxy server
+  -udp
+        run in UDP mode with support for associate
 ```
 
 ## Random
