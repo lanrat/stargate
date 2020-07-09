@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 // from: https://gist.github.com/kotakanbe/d3059af990252ba89a82
 
@@ -12,18 +15,25 @@ func hosts(cidr string) ([]string, error) {
 
 	var ips []string
 	for ip := ip.Mask(net.Mask); net.Contains(ip); inc(ip) {
-		//l.Println("adding ip:", ip)
 		ips = append(ips, ip.String())
 	}
-	// remove network address and broadcast address
-	//if len(ips) > 2 {
-	//	return ips[1 : len(ips)-1], nil
-	//}
-	// remove broadcast address
-	if len(ips) > 1 {
-		return ips[0 : len(ips)-1], nil
-	}
+	// // remove broadcast address
+	// if len(ips) > 1 {
+	// 	return ips[0 : len(ips)-1], nil
+	// }
 	return ips, nil
+}
+
+func ips2Address(ips []string) ([]*net.TCPAddr, error) {
+	addresses := make([]*net.TCPAddr, 0, len(ips))
+	for _, ip := range ips {
+		address, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:0", ip))
+		if err != nil {
+			return addresses, err
+		}
+		addresses = append(addresses, address)
+	}
+	return addresses, nil
 }
 
 //  http://play.golang.org/p/m8TNTtygK0
