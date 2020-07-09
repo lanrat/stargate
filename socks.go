@@ -4,12 +4,24 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"strconv"
 
 	"github.com/haxii/socks5"
 )
 
 func runProxy(proxyAddr net.Addr, listenAddr string) error {
 	conf := &socks5.Config{}
+	if *udp {
+		udpIP, udpPort, err := net.SplitHostPort(listenAddr)
+		if err != nil {
+			return err
+		}
+		conf.BindIP = net.ParseIP(udpIP)
+		conf.BindPort, err = strconv.Atoi(udpPort)
+		if err != nil {
+			return err
+		}
+	}
 	conf.Logger = l
 	d := net.Dialer{LocalAddr: proxyAddr}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -19,11 +31,22 @@ func runProxy(proxyAddr net.Addr, listenAddr string) error {
 	if err != nil {
 		return err
 	}
-	return server.ListenAndServe("tcp", listenAddr)
+	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
 func runRandomProxy(proxyAddresses []net.Addr, listenAddr string) error {
 	conf := &socks5.Config{}
+	if *udp {
+		udpIP, udpPort, err := net.SplitHostPort(listenAddr)
+		if err != nil {
+			return err
+		}
+		conf.BindIP = net.ParseIP(udpIP)
+		conf.BindPort, err = strconv.Atoi(udpPort)
+		if err != nil {
+			return err
+		}
+	}
 	conf.Logger = l
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		d := net.Dialer{LocalAddr: proxyAddresses[rand.Intn(len(proxyAddresses))]}
@@ -33,5 +56,5 @@ func runRandomProxy(proxyAddresses []net.Addr, listenAddr string) error {
 	if err != nil {
 		return err
 	}
-	return server.ListenAndServe("tcp", listenAddr)
+	return server.ListenAndServe(proxyAddresses[0].Network(), listenAddr)
 }
