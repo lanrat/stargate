@@ -19,7 +19,6 @@ var (
 	port     = flag.Uint("port", 0, "first port to start listening on")
 	proxy    = flag.String("proxy", "127.0.0.1/32", "CIDR notation of proxy IPs")
 	random   = flag.Uint("random", 0, "port to use for random proxy server")
-	udp      = flag.Bool("udp", false, "run in UDP mode with support for associate")
 )
 
 func main() {

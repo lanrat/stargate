@@ -28,11 +28,7 @@ func ips2Address(ips []string) ([]net.Addr, error) {
 	var err error
 	addresses := make([]net.Addr, 0, len(ips))
 	for _, ip := range ips {
-		if *udp {
-			address, err = net.ResolveUDPAddr("udp", net.JoinHostPort(ip, "0"))
-		} else {
-			address, err = net.ResolveTCPAddr("tcp", net.JoinHostPort(ip, "0"))
-		}
+		address, err = net.ResolveTCPAddr("tcp", net.JoinHostPort(ip, "0"))
 		if err != nil {
 			return addresses, err
 		}
