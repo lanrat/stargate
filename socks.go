@@ -8,7 +8,7 @@ import (
 	"github.com/haxii/socks5"
 )
 
-func runProxy(proxyAddr *net.TCPAddr, listenAddr string) error {
+func runProxy(proxyAddr net.Addr, listenAddr string) error {
 	conf := &socks5.Config{}
 	conf.Logger = l
 	d := net.Dialer{LocalAddr: proxyAddr}
@@ -22,7 +22,7 @@ func runProxy(proxyAddr *net.TCPAddr, listenAddr string) error {
 	return server.ListenAndServe("tcp", listenAddr)
 }
 
-func runRandomProxy(proxyAddresses []*net.TCPAddr, listenAddr string) error {
+func runRandomProxy(proxyAddresses []net.Addr, listenAddr string) error {
 	conf := &socks5.Config{}
 	conf.Logger = l
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {

@@ -5,7 +5,7 @@ This requires the host running stargate to have the subnet routed directly to it
 
 ## Usage
 
-```
+```console
 Usage of ./stargate:
   -listen string
         IP to listen on (default "127.0.0.1")
@@ -26,13 +26,13 @@ This is useful for avoid rate-limiting or in situations where there are too many
 
 The following will start 255 SOCKS proxies listening on 127.0.0.7 ports 10000-100256 sending traffic egressing on 12.34.56.0 through 12.34.56.254.
 
-```
+```console
 ./stargate -listen 127.0.0.7 -port 10000 -proxy 12.34.56.0/24
 ```
 
 The following will start a single socks proxy listening on 127.0.0.1:1337 egressing each connection from a random IP in 12.34.56.0/24.
 
-```
+```console
 ./stargate -random 1337 -proxy 12.34.56.0/24
 
 ```

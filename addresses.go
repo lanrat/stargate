@@ -23,8 +23,8 @@ func hosts(cidr string) ([]string, error) {
 	return ips, nil
 }
 
-func ips2Address(ips []string) ([]*net.TCPAddr, error) {
-	addresses := make([]*net.TCPAddr, 0, len(ips))
+func ips2Address(ips []string) ([]net.Addr, error) {
+	addresses := make([]net.Addr, 0, len(ips))
 	for _, ip := range ips {
 		address, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(ip, "0"))
 		if err != nil {

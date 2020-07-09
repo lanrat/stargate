@@ -47,7 +47,7 @@ func main() {
 			listenPort := num + int(*port)
 			address := address // https://golang.org/doc/faq#closures_and_goroutines
 			work.Go(func() error {
-				l.Printf("Starting proxy %s:%d on IP: %s\n", *listenIP, listenPort, address.IP.String())
+				l.Printf("Starting proxy %s:%d on IP: %s\n", *listenIP, listenPort, address.String())
 				return runProxy(address, fmt.Sprintf("%s:%d", *listenIP, listenPort))
 			})
 		}
