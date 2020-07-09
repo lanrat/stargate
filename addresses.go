@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 )
 
@@ -27,7 +26,7 @@ func hosts(cidr string) ([]string, error) {
 func ips2Address(ips []string) ([]*net.TCPAddr, error) {
 	addresses := make([]*net.TCPAddr, 0, len(ips))
 	for _, ip := range ips {
-		address, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:0", ip))
+		address, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(ip, "0"))
 		if err != nil {
 			return addresses, err
 		}
