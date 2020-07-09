@@ -3,6 +3,8 @@
 Stargate runs TCP SOCKS proxies on different ports egressing on sequential IPs in the same subnet.
 This requires the host running stargate to have the subnet routed directly to it.
 
+If you have an IPv6 subnet, stargate can allow you to make full use of it by any program that can speak SOCKS.
+
 ## Usage
 
 ```console
@@ -30,10 +32,10 @@ The following will start 255 SOCKS proxies listening on 127.0.0.7 ports 10000-10
 ./stargate -listen 127.0.0.7 -port 10000 -proxy 12.34.56.0/24
 ```
 
-The following will start a single socks proxy listening on 127.0.0.1:1337 egressing each connection from a random IP in 12.34.56.0/24.
+The following will start a single socks proxy listening on 127.0.0.1:1337 egressing each connection from a random IP in fd00:1337::1/64. This offers you 2<sup>64</sup> possible IPs to egress on.
 
 ```console
-./stargate -random 1337 -proxy 12.34.56.0/24
+./stargate -random 1337 -proxy fd00:1337::1/64
 
 ```
 
