@@ -22,7 +22,7 @@ Usage of ./stargate:
 ## Random
 
 The `-random` flag starts a SOCKS5 proxy that egresses traffic on a random IP in the subnet.
-This is useful for avoid rate-limiting or in situations where there are too many IPs in the subnet to listen on each port which is common with IPv6.
+This is useful to avoid rate-limiting or in situations where there are too many IPs in the subnet to listen on each port which is common with IPv6.
 
 ## Example
 
