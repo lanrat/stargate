@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
-	"math/rand"
 	"net"
 
 	"github.com/haxii/socks5"
 )
 
 func runProxy(proxyAddr net.Addr, listenAddr string) error {
-	conf := &socks5.Config{}
-	conf.Logger = l
+	conf := &socks5.Config{
+		Logger:   l,
+		Resolver: resolver,
+	}
 	d := net.Dialer{LocalAddr: proxyAddr}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		v("proxy request for %s: %q", network, addr)
 		return d.DialContext(ctx, network, addr)
 	}
 	server, err := socks5.New(conf)
@@ -22,16 +24,22 @@ func runProxy(proxyAddr net.Addr, listenAddr string) error {
 	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
-func runRandomProxy(proxyAddresses []net.Addr, listenAddr string) error {
-	conf := &socks5.Config{}
-	conf.Logger = l
+func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
+	conf := &socks5.Config{
+		Logger:   l,
+		Resolver: resolver,
+	}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		d := net.Dialer{LocalAddr: proxyAddresses[rand.Intn(len(proxyAddresses))]}
+		ip := randomIP(cidr)
+		v("random proxy request for (%q) %s: %q", ip.String(), network, addr)
+		d := net.Dialer{LocalAddr: &net.TCPAddr{
+			IP: ip,
+		}}
 		return d.DialContext(ctx, network, addr)
 	}
 	server, err := socks5.New(conf)
 	if err != nil {
 		return err
 	}
-	return server.ListenAndServe(proxyAddresses[0].Network(), listenAddr)
+	return server.ListenAndServe("tcp", listenAddr)
 }
