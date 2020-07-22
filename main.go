@@ -47,9 +47,8 @@ func main() {
 	}
 
 	// prep network aware resolver
-	network := getIpNetwork(&cidr.IP)
 	resolver = &DNSResolver{
-		network: network,
+		network: getIPNetwork(&cidr.IP),
 	}
 
 	var work errgroup.Group
