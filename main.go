@@ -56,6 +56,7 @@ func main() {
 	if subnetSize < 0 {
 		l.Fatalf("proxy range provided larger than max int64")
 	}
+	v("subnet size %d", subnetSize)
 
 	// prep network aware resolver
 	resolver = &DNSResolver{
