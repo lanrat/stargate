@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"math/big"
 	"math/rand"
 	"net"
 )
@@ -11,7 +12,7 @@ import (
 
 // from: https://gist.github.com/kotakanbe/d3059af990252ba89a82
 func hosts(cidr *net.IPNet) ([]string, error) {
-	ips := make([]string, 0, maskSize(&cidr.Mask))
+	ips := make([]string, 0, maskSize64(&cidr.Mask))
 	for ip := cidr.IP.Mask(cidr.Mask); cidr.Contains(ip); inc(ip) {
 		ips = append(ips, ip.String())
 	}
@@ -47,13 +48,21 @@ func ips2Address(ips []string) ([]net.Addr, error) {
 }
 
 // returns -1 if too large for int64
-func maskSize(m *net.IPMask) int64 {
+func maskSize64(m *net.IPMask) int64 {
 	maskBits, totalBits := m.Size()
 	addrBits := totalBits - maskBits
 	if addrBits > 63 { // 63 is max positive int size
 		return -1
 	}
 	return 1 << addrBits
+}
+
+func maskSize(m *net.IPMask) big.Int {
+	var size big.Int
+	maskBits, totalBits := m.Size()
+	addrBits := totalBits - maskBits
+	size.Lsh(big.NewInt(1), uint(addrBits))
+	return size
 }
 
 // randomIP returns a random IP address withint the IPNet

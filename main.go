@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
+	"math/big"
 	"math/rand"
 	"net"
 	"os"
@@ -53,10 +55,7 @@ func main() {
 	// calculate number of proxies about to start
 	// show warning if too large
 	subnetSize := maskSize(&cidr.Mask)
-	if subnetSize < 0 {
-		l.Fatalf("proxy range provided larger than max int64")
-	}
-	v("subnet size %d", subnetSize)
+	v("subnet size %s", subnetSize.String())
 
 	// prep network aware resolver
 	resolver = &DNSResolver{
@@ -66,8 +65,11 @@ func main() {
 	var work errgroup.Group
 	if *port != 0 {
 		// show warning if subnet too large
-		if subnetSize > maxProxies {
-			l.Fatalf("proxy range provided too large %d > %d", subnetSize, maxProxies)
+		if subnetSize.Cmp(big.NewInt(math.MaxInt32)) > 0 {
+			l.Fatalf("proxy range provided larger than MaxInt32")
+		}
+		if subnetSize.Cmp(big.NewInt(maxProxies)) > 0 {
+			l.Fatalf("proxy range provided too large %s > %d", subnetSize.String(), maxProxies)
 		}
 
 		ips, err := hosts(cidr)
