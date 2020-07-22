@@ -21,6 +21,10 @@ var (
 	random   = flag.Uint("random", 0, "port to use for random proxy server")
 )
 
+const (
+	maxProxies = 10000
+)
+
 func main() {
 	flag.Parse()
 	l = log.New(os.Stderr, "", log.LstdFlags)
@@ -29,20 +33,35 @@ func main() {
 		l.Fatal("no SOCKS proxy ports provided, pass -port and/or -random")
 	}
 
-	ips, err := hosts(*proxy)
+	_, cidr, err := net.ParseCIDR(*proxy)
 	check(err)
 
-	// check that random port is outside range of other proxies
-	if *port != 0 && *random != 0 && *random >= *port && int(*random) < (int(*port)+len(ips)) {
-		l.Fatalf("random port %d inside range %d-%d", *random, *port, int(*port)+len(ips))
+	// calculate number of proxies about to start
+	// show warning if too large
+	subnetSize := maskSize(&cidr.Mask)
+	if subnetSize < 0 {
+		l.Fatalf("proxy range provided larger than max int64")
 	}
-
-	// convert all IPs to addressess
-	addresses, err := ips2Address(ips)
-	check(err)
 
 	var work errgroup.Group
 	if *port != 0 {
+		// show warning if subnet too large
+		if subnetSize > maxProxies {
+			l.Fatalf("proxy range provided too large %d > %d", subnetSize, maxProxies)
+		}
+
+		ips, err := hosts(cidr)
+		check(err)
+
+		// check that random port is outside range of other proxies
+		if *random != 0 && *random >= *port && int(*random) < (int(*port)+len(ips)) {
+			l.Fatalf("random port %d inside range %d-%d", *random, *port, int(*port)+len(ips))
+		}
+
+		// convert all IPs to addressess
+		addresses, err := ips2Address(ips)
+		check(err)
+
 		l.Printf("starting on %d IPs\n", len(addresses))
 		for num, address := range addresses {
 			listenPort := num + int(*port)
@@ -55,13 +74,14 @@ func main() {
 		}
 	}
 
-	// start random proxy if set
+	// start random proxy if -random set
 	if *random != 0 {
+
 		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)
-			return runRandomProxy(addresses, addrStr)
+			return runRandomProxy(cidr, addrStr)
 		})
 	}
 
