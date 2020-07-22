@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -13,15 +14,17 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// flags
 var (
-	l        *log.Logger
-	resolver socks5.NameResolver
-
-	listenIP = flag.String("listen", "127.0.0.1", "IP to listen on")
+	listenIP = flag.String("listen", "localhost", "IP to listen on")
 	port     = flag.Uint("port", 0, "first port to start listening on")
-	proxy    = flag.String("proxy", "127.0.0.1/32", "CIDR notation of proxy IPs")
 	random   = flag.Uint("random", 0, "port to use for random proxy server")
 	verbose  = flag.Bool("verbose", false, "enable verbose logging")
+)
+
+var (
+	l        = log.New(os.Stderr, "", log.LstdFlags)
+	resolver socks5.NameResolver
 )
 
 const (
@@ -30,13 +33,21 @@ const (
 
 func main() {
 	flag.Parse()
-	l = log.New(os.Stderr, "", log.LstdFlags)
+	if flag.NArg() != 1 {
+		flag.Usage = func() {
+			fmt.Fprintf(os.Stderr, "Usage of %s: [OPTION]... CIDR\n\tCIDR example: \"192.0.2.0/24\"\nOPTIONS:\n", os.Args[0])
+			flag.PrintDefaults()
+		}
+		flag.Usage()
+		return
+	}
+	proxy := flag.Arg(0)
 
 	if *port == 0 && *random == 0 {
 		l.Fatal("no SOCKS proxy ports provided, pass -port and/or -random")
 	}
 
-	_, cidr, err := net.ParseCIDR(*proxy)
+	_, cidr, err := net.ParseCIDR(proxy)
 	check(err)
 
 	// calculate number of proxies about to start

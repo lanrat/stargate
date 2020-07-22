@@ -50,12 +50,13 @@ func ips2Address(ips []string) ([]net.Addr, error) {
 func maskSize(m *net.IPMask) int64 {
 	maskBits, totalBits := m.Size()
 	addrBits := totalBits - maskBits
-	if addrBits > math.MaxInt64 {
+	if addrBits > 63 { // 63 is max positive int size
 		return -1
 	}
 	return 1 << addrBits
 }
 
+// randomIP returns a random IP address withint the IPNet
 func randomIP(cidr *net.IPNet) net.IP {
 	ip := cidr.IP
 	for i := range ip {
@@ -65,6 +66,7 @@ func randomIP(cidr *net.IPNet) net.IP {
 	return ip
 }
 
+// getIPNetwork returns the network string for the IP provided
 func getIPNetwork(ip *net.IP) string {
 	if ip.To4() != nil {
 		return "ip4"
