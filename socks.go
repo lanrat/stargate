@@ -8,8 +8,10 @@ import (
 )
 
 func runProxy(proxyAddr net.Addr, listenAddr string) error {
-	conf := &socks5.Config{}
-	conf.Logger = l
+	conf := &socks5.Config{
+		Logger:   l,
+		Resolver: resolver,
+	}
 	d := net.Dialer{LocalAddr: proxyAddr}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		return d.DialContext(ctx, network, addr)
@@ -22,8 +24,10 @@ func runProxy(proxyAddr net.Addr, listenAddr string) error {
 }
 
 func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
-	conf := &socks5.Config{}
-	conf.Logger = l
+	conf := &socks5.Config{
+		Logger:   l,
+		Resolver: resolver,
+	}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		ip := randomIP(cidr)
 		d := net.Dialer{LocalAddr: &net.TCPAddr{

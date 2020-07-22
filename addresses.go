@@ -55,10 +55,18 @@ func maskSize(m *net.IPMask) int64 {
 	}
 	return 1 << addrBits
 }
+
 func randomIP(cidr *net.IPNet) net.IP {
 	ip := cidr.IP
 	for i := range ip {
 		ip[i] = cidr.Mask[i] & (ip[i] + byte(rand.Intn(math.MaxUint8-int(ip[i]))))
 	}
 	return ip
+}
+
+func getIpNetwork(ip *net.IP) string {
+	if ip.To4() != nil {
+		return "ip4"
+	}
+	return "ip6"
 }

@@ -9,11 +9,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/haxii/socks5"
 	"golang.org/x/sync/errgroup"
 )
 
 var (
-	l *log.Logger
+	l        *log.Logger
+	resolver socks5.NameResolver
 
 	listenIP = flag.String("listen", "127.0.0.1", "IP to listen on")
 	port     = flag.Uint("port", 0, "first port to start listening on")
@@ -41,6 +43,12 @@ func main() {
 	subnetSize := maskSize(&cidr.Mask)
 	if subnetSize < 0 {
 		l.Fatalf("proxy range provided larger than max int64")
+	}
+
+	// prep network aware resolver
+	network := getIpNetwork(&cidr.IP)
+	resolver = &DNSResolver{
+		network: network,
 	}
 
 	var work errgroup.Group
