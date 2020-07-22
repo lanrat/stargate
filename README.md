@@ -17,6 +17,8 @@ Usage of ./stargate:
         CIDR notation of proxy IPs (default "127.0.0.1/32")
   -random uint
         port to use for random proxy server
+  -verbose
+        enable verbose logging
 ```
 
 ## Random

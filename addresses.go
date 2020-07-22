@@ -59,7 +59,7 @@ func maskSize(m *net.IPMask) int64 {
 func randomIP(cidr *net.IPNet) net.IP {
 	ip := cidr.IP
 	for i := range ip {
-		rb := byte(rand.Intn(math.MaxUint8 - int(ip[i])))
+		rb := byte(rand.Intn(math.MaxUint8))
 		ip[i] = (cidr.Mask[i] & ip[i]) + (^cidr.Mask[i] & rb)
 	}
 	return ip
