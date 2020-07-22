@@ -116,6 +116,6 @@ func check(err error) {
 
 func v(format string, a ...interface{}) {
 	if *verbose {
-		log.Printf(format, a...)
+		l.Printf(format, a...)
 	}
 }
