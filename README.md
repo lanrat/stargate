@@ -28,16 +28,16 @@ This is useful to avoid rate-limiting or in situations where there are too many 
 
 ## Example
 
-The following will start 255 SOCKS proxies listening on 127.0.0.7 ports 10000-100256 sending traffic egressing on 12.34.56.0 through 12.34.56.254.
+The following will start 255 SOCKS proxies listening on 127.0.0.7 ports 10000-100256 sending traffic egressing on 192.0.2.1 through 192.0.2.254.
 
 ```console
-./stargate -listen 127.0.0.7 -port 10000 12.34.56.0/24
+./stargate -listen 127.0.0.7 -port 10000 192.0.2.0/24
 ```
 
-The following will start a single socks proxy listening on 127.0.0.1:1337 egressing each connection from a random IP in fd00:1337::1/64. This offers you 2<sup>64</sup> possible IPs to egress on.
+The following will start a single socks proxy listening on 127.0.0.1:1337 egressing each connection from a random IP in 2001:DB8:1337::1/64 This offers you 2<sup>64</sup> possible IPs to egress on.
 
 ```console
-./stargate -random 1337 fd00:1337::1/64
+./stargate -random 1337 2001:DB8:1337::1/64
 
 ```
 
