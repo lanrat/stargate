@@ -14,6 +14,7 @@ func runProxy(proxyAddr net.Addr, listenAddr string) error {
 	}
 	d := net.Dialer{LocalAddr: proxyAddr}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		v("proxy request for %s: %q", network, addr)
 		return d.DialContext(ctx, network, addr)
 	}
 	server, err := socks5.New(conf)
@@ -30,6 +31,7 @@ func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
 	}
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		ip := randomIP(cidr)
+		v("random proxy request for (%q) %s: %q", ip.String(), network, addr)
 		d := net.Dialer{LocalAddr: &net.TCPAddr{
 			IP: ip,
 		}}

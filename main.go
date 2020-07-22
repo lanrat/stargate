@@ -21,6 +21,7 @@ var (
 	port     = flag.Uint("port", 0, "first port to start listening on")
 	proxy    = flag.String("proxy", "127.0.0.1/32", "CIDR notation of proxy IPs")
 	random   = flag.Uint("random", 0, "port to use for random proxy server")
+	verbose  = flag.Bool("verbose", false, "enable verbose logging")
 )
 
 const (
@@ -84,7 +85,6 @@ func main() {
 
 	// start random proxy if -random set
 	if *random != 0 {
-
 		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
@@ -100,5 +100,11 @@ func main() {
 func check(err error) {
 	if err != nil {
 		l.Fatal(err)
+	}
+}
+
+func v(format string, a ...interface{}) {
+	if *verbose {
+		log.Printf(format, a...)
 	}
 }
