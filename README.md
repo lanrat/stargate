@@ -8,13 +8,13 @@ If you have an IPv6 subnet, stargate can allow you to make full use of it by any
 ## Usage
 
 ```console
-Usage of ./stargate:
+Usage of ./stargate: [OPTION]... CIDR
+        CIDR example: "192.0.2.0/24"
+OPTIONS:
   -listen string
-        IP to listen on (default "127.0.0.1")
+        IP to listen on (default "localhost")
   -port uint
         first port to start listening on
-  -proxy string
-        CIDR notation of proxy IPs (default "127.0.0.1/32")
   -random uint
         port to use for random proxy server
   -verbose
@@ -31,13 +31,13 @@ This is useful to avoid rate-limiting or in situations where there are too many 
 The following will start 255 SOCKS proxies listening on 127.0.0.7 ports 10000-100256 sending traffic egressing on 12.34.56.0 through 12.34.56.254.
 
 ```console
-./stargate -listen 127.0.0.7 -port 10000 -proxy 12.34.56.0/24
+./stargate -listen 127.0.0.7 -port 10000 12.34.56.0/24
 ```
 
 The following will start a single socks proxy listening on 127.0.0.1:1337 egressing each connection from a random IP in fd00:1337::1/64. This offers you 2<sup>64</sup> possible IPs to egress on.
 
 ```console
-./stargate -random 1337 -proxy fd00:1337::1/64
+./stargate -random 1337 fd00:1337::1/64
 
 ```
 
