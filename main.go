@@ -72,28 +72,28 @@ func main() {
 			l.Fatalf("proxy range provided too large %s > %d", subnetSize.String(), maxProxies)
 		}
 
-		ips, err := hosts(cidr)
+		ipList, err := hosts(cidr)
 		check(err)
 
 		// check that random port is outside range of other proxies
-		if *random != 0 && *random >= *port && int(*random) < (int(*port)+len(ips)) {
-			l.Fatalf("random port %d inside range %d-%d", *random, *port, int(*port)+len(ips))
+		if *random != 0 && *random >= *port && int(*random) < (int(*port)+len(ipList)) {
+			l.Fatalf("random port %d inside range %d-%d", *random, *port, int(*port)+len(ipList))
 		}
 
-		// convert all IPs to addressess
-		addresses, err := ips2Address(ips)
-		check(err)
-
-		l.Printf("starting on %d IPs\n", len(addresses))
-		for num, address := range addresses {
+		l.Printf("starting on %s\n", cidr.String())
+		started := 0
+		for num, ip := range ipList {
 			listenPort := num + int(*port)
-			address := address // https://golang.org/doc/faq#closures_and_goroutines
+			ip := ip // https://golang.org/doc/faq#closures_and_goroutines
+			started++
+
+			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(listenPort))
+			l.Printf("Starting proxy %s using IP: %s\n", addrStr, ip.String())
 			work.Go(func() error {
-				addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(listenPort))
-				l.Printf("Starting proxy %s on IP: %s\n", addrStr, address.String())
-				return runProxy(address, addrStr)
+				return runProxy(ip, addrStr)
 			})
 		}
+		l.Printf("started %d proxies\n", started)
 	}
 
 	// start random proxy if -random set
@@ -110,12 +110,14 @@ func main() {
 	check(err)
 }
 
+// check checks errors
 func check(err error) {
 	if err != nil {
 		l.Fatal(err)
 	}
 }
 
+// v verbose logging
 func v(format string, a ...interface{}) {
 	if *verbose {
 		l.Printf(format, a...)
