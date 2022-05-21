@@ -22,8 +22,13 @@ check2:
 lint:
 	golint ./...
 
+
 docker: Dockerfile *.go go.mod
 	docker build -t lanrat/stargate .
 
-deps:
-	go mod download
+update-deps: go.mod
+	GOPROXY=direct go get -u ./...
+	go mod tidy
+
+deps: go.mod
+	GOPROXY=direct go mod download
