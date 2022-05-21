@@ -7,7 +7,12 @@ import (
 	"github.com/haxii/socks5"
 )
 
-func runProxy(proxyAddr net.Addr, listenAddr string) error {
+// runProxy starts a SOCKS proxy for proxyAddr listening on listenAddr
+func runProxy(proxyIP net.IP, listenAddr string) error {
+	proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
+	if err != nil {
+		return err
+	}
 	conf := &socks5.Config{
 		Logger:   l,
 		Resolver: resolver,
@@ -27,6 +32,7 @@ func runProxy(proxyAddr net.Addr, listenAddr string) error {
 	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
+// runRandomProxy starts a proxy listening on listenAddr that egresses every connection on a new random port in cider
 func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
 	conf := &socks5.Config{
 		Logger:   l,
