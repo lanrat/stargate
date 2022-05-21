@@ -1,4 +1,4 @@
 github.com/haxii/socks5 v1.0.0 h1:78BIzd4lHibdRNOKdMwKCnnsgYLW9SeotqU+nMhWSSo=
 github.com/haxii/socks5 v1.0.0/go.mod h1:6O9Ba2yrLlvuSe/L1e84eZI8cPw6H+q1Ilr4hjgm4uY=
-golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208 h1:qwRHBd0NqMbJxfbotnDhm2ByMI1Shq4Y6oRJo21SGJA=
-golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.0.0-20220513210516-0976fa681c29 h1:w8s32wxx3sY+OjLlv9qltkLU5yvJzxjjgiHWLjdIcw4=
+golang.org/x/sync v0.0.0-20220513210516-0976fa681c29/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
