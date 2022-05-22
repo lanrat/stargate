@@ -49,11 +49,6 @@ func Start(cfg Config) (*WG, error) {
 //var pingIP netip.Addr = netip.MustParseAddr("2001:4860:4860::8888")
 
 func (w *WG) TestPing() error {
-	// test sending a ping...
-	// p, err := w.Net.DialPingAddr(w.Config.Interface.Address[0], pingIP)
-	// if err != nil {
-	// 	return err
-	// }
 
 	time.Sleep(time.Second * 2)
 
@@ -65,7 +60,7 @@ func (w *WG) TestPing() error {
 	}
 	requestPing := icmp.Echo{
 		Seq:  rand.Intn(1 << 16),
-		Data: []byte("gopher burrow"),
+		Data: []byte("stargate"),
 	}
 	var icmpType icmp.Type = ipv4.ICMPTypeEcho
 	if protocol == ProtocolIPv6ICMP {

@@ -33,11 +33,11 @@ func runProxy(proxyIP net.IP, listenAddr string) error {
 	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
-func runWgProxy(proxyIP net.IP, listenAddr string, tnet *netstack.Net) error {
-	proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
-	if err != nil {
-		return err
-	}
+func runWgProxy(listenAddr string, tnet *netstack.Net) error {
+	//proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
+	// if err != nil {
+	// 	return err
+	// }
 	conf := &socks5.Config{
 		Logger:   l,
 		Resolver: resolver,
@@ -56,7 +56,7 @@ func runWgProxy(proxyIP net.IP, listenAddr string, tnet *netstack.Net) error {
 	if err != nil {
 		return err
 	}
-	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
+	return server.ListenAndServe("tcp", listenAddr)
 }
 
 // runRandomProxy starts a proxy listening on listenAddr that egresses every connection on a new random port in cider

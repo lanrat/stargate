@@ -86,6 +86,9 @@ func main() {
 		network: getIPNetwork(&cidr.IP),
 	}
 
+	// prep random
+	rand.Seed(time.Now().Unix())
+
 	var work errgroup.Group
 	// start proxies for port range
 	if *port != 0 {
@@ -123,7 +126,6 @@ func main() {
 
 	// start random proxy if -random set
 	if *random != 0 && wg == nil {
-		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)
@@ -134,12 +136,11 @@ func main() {
 	// start wireguard proxy
 	// TODO merge into random
 	if *random != 0 && wg != nil {
-		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting wg egress proxy %s\n", addrStr)
-			proxyIP := wg.Config.Interface.Address[0].As16()
-			return runWgProxy(proxyIP[:], addrStr, wg.Net)
+			//proxyIP := wg.Config.Interface.Address[1].As16()
+			return runWgProxy(addrStr, wg.Net)
 		})
 	}
 
