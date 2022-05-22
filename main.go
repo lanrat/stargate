@@ -55,7 +55,7 @@ func main() {
 		wgConf, err := wg.ParseConfig(*wgConfigFile)
 		check(err)
 		*localSubnet = wgConf.Interface.AddrString[0] // TODO set the subnet for the rest of the code.. hax...
-		log.Printf("WG Config: %+v", *wgConf)
+		//log.Printf("WG Config: %+v", *wgConf)
 		wgNet, err = wg.Start(*wgConf)
 		check(err)
 		err = wgNet.Net.Spoof(1)
