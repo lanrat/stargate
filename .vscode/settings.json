@@ -1,10 +1,15 @@
 {
     "cSpell.words": [
+        "allowshadow",
         "BINDANY",
         "errgroup",
         "Freebind",
         "haxii",
         "iface",
-        "stargate"
+        "netip",
+        "netstack",
+        "preshared",
+        "stargate",
+        "tnet"
     ]
 }

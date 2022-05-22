@@ -2,7 +2,7 @@
 
 all: stargate
 
-stargate: *.go go.mod
+stargate: *.go */*.go go.mod
 	CGO_ENABLED=0 go build -ldflags "-w -s" -trimpath -a -installsuffix cgo -o $@
 
 clean:

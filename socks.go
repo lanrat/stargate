@@ -5,9 +5,10 @@ import (
 	"net"
 
 	"github.com/haxii/socks5"
+	"golang.zx2c4.com/wireguard/tun/netstack"
 )
 
-// runProxy starts a SOCKS proxy for proxyAddr listening on listenAddr
+// runProxy starts a SOCKS proxy for proxyIP listening on listenAddr
 func runProxy(proxyIP net.IP, listenAddr string) error {
 	proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
 	if err != nil {
@@ -24,6 +25,32 @@ func runProxy(proxyIP net.IP, listenAddr string) error {
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		v("%s proxy request for: %q", network, addr)
 		return d.DialContext(ctx, network, addr)
+	}
+	server, err := socks5.New(conf)
+	if err != nil {
+		return err
+	}
+	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
+}
+
+func runWgProxy(proxyIP net.IP, listenAddr string, tnet *netstack.Net) error {
+	proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
+	if err != nil {
+		return err
+	}
+	conf := &socks5.Config{
+		Logger:   l,
+		Resolver: resolver,
+	}
+	// d := net.Dialer{
+	// 	LocalAddr: proxyAddr,
+	// 	//Control:   controlFreebind,
+	// }
+	// TODO get LocalAddr working?
+	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		v("%s wg proxy request for: %q", network, addr)
+		return tnet.DialContext(ctx, network, addr)
+		//return d.DialContext(ctx, network, addr)
 	}
 	server, err := socks5.New(conf)
 	if err != nil {

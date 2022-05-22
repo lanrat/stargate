@@ -13,20 +13,24 @@ import (
 	"time"
 
 	"github.com/haxii/socks5"
+	"github.com/lanrat/stargate/wireguard"
 	"golang.org/x/sync/errgroup"
 )
 
 // flags
 var (
-	listenIP = flag.String("listen", "localhost", "IP to listen on")
-	port     = flag.Uint("port", 0, "first port to start listening on")
-	random   = flag.Uint("random", 0, "port to use for random proxy server")
-	verbose  = flag.Bool("verbose", false, "enable verbose logging")
+	listenIP     = flag.String("listen", "localhost", "IP to listen on")
+	port         = flag.Uint("port", 0, "first port to start listening on")
+	random       = flag.Uint("random", 0, "port to use for random proxy server")
+	verbose      = flag.Bool("verbose", false, "enable verbose logging")
+	wgConfigFile = flag.String("wireguard", "", "wireguard config file")
+	localSubnet  = flag.String("subnet", "", "local subnet to proxy")
 )
 
 var (
 	l        = log.New(os.Stderr, "", log.LstdFlags)
 	resolver socks5.NameResolver
+	wg       *wireguard.WG
 )
 
 const (
@@ -34,22 +38,42 @@ const (
 )
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s: [OPTION]... CIDR\n\tCIDR example: -subnet \"192.0.2.0/24\"\nOPTIONS:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
-	if flag.NArg() != 1 {
-		flag.Usage = func() {
-			fmt.Fprintf(os.Stderr, "Usage of %s: [OPTION]... CIDR\n\tCIDR example: \"192.0.2.0/24\"\nOPTIONS:\n", os.Args[0])
-			flag.PrintDefaults()
-		}
+	if len(*localSubnet) != 0 && len(*wgConfigFile) != 0 {
+		fmt.Fprintf(os.Stderr, "Must pass subnet or wireguard config\n\n")
 		flag.Usage()
 		return
 	}
-	proxy := flag.Arg(0)
+
+	// if len(*localSubnet) != 0 && len(*wgConfigFile) != 0 {
+	// 	fmt.Fprintf(os.Stderr, "Must pass subnet or wireguard config, not both\n")
+	// 	flag.Usage()
+	// 	return
+	// }
+
+	if len(*wgConfigFile) > 0 {
+		wgConf, err := wireguard.ParseConfig(*wgConfigFile)
+		check(err)
+		*localSubnet = wgConf.Interface.AddrString[0] // TODO set the subnet for the rest of the code.. hax...
+		log.Printf("WG Config: %+v", *wgConf)
+		wg, err = wireguard.Start(*wgConf)
+		check(err)
+		err = wg.TestPing()
+		check(err)
+	}
+
+	// log.Printf("waiting...")
+	// time.Sleep(time.Second * 5)
 
 	if *port == 0 && *random == 0 {
 		l.Fatal("no SOCKS proxy ports provided, pass -port and/or -random")
 	}
 
-	_, cidr, err := net.ParseCIDR(proxy)
+	_, cidr, err := net.ParseCIDR(*localSubnet)
 	check(err)
 
 	// calculate number of proxies about to start
@@ -63,6 +87,7 @@ func main() {
 	}
 
 	var work errgroup.Group
+	// start proxies for port range
 	if *port != 0 {
 		// show warning if subnet too large
 		if subnetSize.Cmp(big.NewInt(math.MaxInt32)) > 0 {
@@ -97,12 +122,24 @@ func main() {
 	}
 
 	// start random proxy if -random set
-	if *random != 0 {
+	if *random != 0 && wg == nil {
 		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)
 			return runRandomProxy(cidr, addrStr)
+		})
+	}
+
+	// start wireguard proxy
+	// TODO merge into random
+	if *random != 0 && wg != nil {
+		rand.Seed(time.Now().Unix())
+		work.Go(func() error {
+			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
+			l.Printf("Starting wg egress proxy %s\n", addrStr)
+			proxyIP := wg.Config.Interface.Address[0].As16()
+			return runWgProxy(proxyIP[:], addrStr, wg.Net)
 		})
 	}
 
