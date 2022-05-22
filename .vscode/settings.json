@@ -10,6 +10,7 @@
         "netstack",
         "preshared",
         "stargate",
+        "tcpip",
         "tnet"
     ]
 }

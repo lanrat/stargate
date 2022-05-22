@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"net/netip"
+	"strings"
 
 	"github.com/haxii/socks5"
 	"golang.zx2c4.com/wireguard/tun/netstack"
@@ -33,24 +36,30 @@ func runProxy(proxyIP net.IP, listenAddr string) error {
 	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
-func runWgProxy(listenAddr string, tnet *netstack.Net) error {
-	//proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
-	// if err != nil {
-	// 	return err
-	// }
+func runWgProxy(cidr *net.IPNet, listenAddr string, tnet *netstack.Net) error {
 	conf := &socks5.Config{
 		Logger:   l,
 		Resolver: resolver,
 	}
-	// d := net.Dialer{
-	// 	LocalAddr: proxyAddr,
-	// 	//Control:   controlFreebind,
-	// }
-	// TODO get LocalAddr working?
 	conf.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		v("%s wg proxy request for: %q", network, addr)
-		return tnet.DialContext(ctx, network, addr)
-		//return d.DialContext(ctx, network, addr)
+		ip := randomIP(cidr)
+		v("%s wg proxy request for: %q, using %s", network, addr, ip)
+		localAddr, _ := netip.AddrFromSlice(ip)
+		localAddrPort := netip.AddrPortFrom(localAddr, 0) // using port 0 lets the OS decide
+		remoteAddrPort, err := netip.ParseAddrPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse netip.AddrPort from %q", addr)
+		}
+		if strings.HasPrefix(network, "tcp") {
+			return tnet.DialTCPWithBindAddr(ctx, localAddrPort, remoteAddrPort)
+		} else if strings.HasPrefix(network, "udp") {
+			return tnet.DialUDPAddrPort(localAddrPort, remoteAddrPort)
+		} else if strings.HasPrefix(network, "ping") {
+			return tnet.DialPingAddr(localAddr, remoteAddrPort.Addr())
+		}
+
+		return nil, fmt.Errorf("cant use network %q, non tcp not implemented yet", network)
+
 	}
 	server, err := socks5.New(conf)
 	if err != nil {

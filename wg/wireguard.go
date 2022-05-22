@@ -1,10 +1,11 @@
-package wireguard
+package wg
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"log"
 	"math/rand"
+	"net/netip"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -13,6 +14,13 @@ import (
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun/netstack"
+)
+
+const (
+	// ProtocolIPv4ICMP is IANA ICMP IPv4
+	ProtocolIPv4ICMP = 1
+	// ProtocolIPv6ICMP is IANA ICMP IPv6
+	ProtocolIPv6ICMP = 58
 )
 
 type WG struct {
@@ -27,9 +35,11 @@ func Start(cfg Config) (*WG, error) {
 	if err != nil {
 		return nil, err
 	}
-	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelVerbose, "WG:"))
+	logLevel := device.LogLevelError
+	//logLevel = device.LogLevelVerbose
+	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(logLevel, "WG:"))
 	ipcStr := cfg.getIPC()
-	log.Printf("DEBUG, ipcStr: \n%s", ipcStr)
+	//log.Printf("DEBUG, ipcStr: \n%s", ipcStr)
 	err = dev.IpcSet(ipcStr)
 	if err != nil {
 		return nil, err
@@ -46,21 +56,19 @@ func Start(cfg Config) (*WG, error) {
 	}, nil
 }
 
-//var pingIP netip.Addr = netip.MustParseAddr("2001:4860:4860::8888")
+func (w *WG) TestPing(ctx context.Context, host netip.Addr) error {
+	protocol := ProtocolIPv4ICMP
+	if host.Is6() {
+		protocol = ProtocolIPv6ICMP
+	}
 
-func (w *WG) TestPing() error {
-
-	time.Sleep(time.Second * 2)
-
-	protocol := ProtocolIPv6ICMP // TODO set dynamically
-
-	socket, err := w.Net.Dial("ping", "2001:4860:4860::8888")
+	socket, err := w.Net.DialContext(ctx, "ping", host.String())
 	if err != nil {
 		return err
 	}
 	requestPing := icmp.Echo{
 		Seq:  rand.Intn(1 << 16),
-		Data: []byte("stargate"),
+		Data: []byte("indeed"),
 	}
 	var icmpType icmp.Type = ipv4.ICMPTypeEcho
 	if protocol == ProtocolIPv6ICMP {
@@ -71,7 +79,7 @@ func (w *WG) TestPing() error {
 		return err
 	}
 	socket.SetReadDeadline(time.Now().Add(time.Second * 10))
-	start := time.Now()
+	//start := time.Now()
 	_, err = socket.Write(icmpBytes)
 	if err != nil {
 		return err
@@ -91,13 +99,6 @@ func (w *WG) TestPing() error {
 	if !bytes.Equal(replyPing.Data, requestPing.Data) || replyPing.Seq != requestPing.Seq {
 		return fmt.Errorf("invalid ping reply: %v", replyPing)
 	}
-	log.Printf("DEBUG Ping latency: %v", time.Since(start))
+	//log.Printf("DEBUG Ping latency: %v", time.Since(start))
 	return nil
 }
-
-const (
-	// ProtocolIPv4ICMP is IANA ICMP IPv4
-	ProtocolIPv4ICMP = 1
-	// ProtocolIPv6ICMP is IANA ICMP IPv6
-	ProtocolIPv6ICMP = 58
-)

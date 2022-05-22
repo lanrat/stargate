@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,12 +9,13 @@ import (
 	"math/big"
 	"math/rand"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/haxii/socks5"
-	"github.com/lanrat/stargate/wireguard"
+	"github.com/lanrat/stargate/wg"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -30,7 +32,7 @@ var (
 var (
 	l        = log.New(os.Stderr, "", log.LstdFlags)
 	resolver socks5.NameResolver
-	wg       *wireguard.WG
+	wgNet    *wg.WG
 )
 
 const (
@@ -49,25 +51,20 @@ func main() {
 		return
 	}
 
-	// if len(*localSubnet) != 0 && len(*wgConfigFile) != 0 {
-	// 	fmt.Fprintf(os.Stderr, "Must pass subnet or wireguard config, not both\n")
-	// 	flag.Usage()
-	// 	return
-	// }
-
 	if len(*wgConfigFile) > 0 {
-		wgConf, err := wireguard.ParseConfig(*wgConfigFile)
+		wgConf, err := wg.ParseConfig(*wgConfigFile)
 		check(err)
 		*localSubnet = wgConf.Interface.AddrString[0] // TODO set the subnet for the rest of the code.. hax...
 		log.Printf("WG Config: %+v", *wgConf)
-		wg, err = wireguard.Start(*wgConf)
+		wgNet, err = wg.Start(*wgConf)
 		check(err)
-		err = wg.TestPing()
+		err = wgNet.Net.Spoof(1)
+		check(err)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		err = wgNet.TestPing(ctx, netip.MustParseAddr("2001:4860:4860::8888"))
+		cancel()
 		check(err)
 	}
-
-	// log.Printf("waiting...")
-	// time.Sleep(time.Second * 5)
 
 	if *port == 0 && *random == 0 {
 		l.Fatal("no SOCKS proxy ports provided, pass -port and/or -random")
@@ -125,7 +122,7 @@ func main() {
 	}
 
 	// start random proxy if -random set
-	if *random != 0 && wg == nil {
+	if *random != 0 && wgNet == nil {
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)
@@ -135,12 +132,12 @@ func main() {
 
 	// start wireguard proxy
 	// TODO merge into random
-	if *random != 0 && wg != nil {
+	if *random != 0 && wgNet != nil {
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting wg egress proxy %s\n", addrStr)
 			//proxyIP := wg.Config.Interface.Address[1].As16()
-			return runWgProxy(addrStr, wg.Net)
+			return runWgProxy(cidr, addrStr, wgNet.Net)
 		})
 	}
 

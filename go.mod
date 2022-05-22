@@ -7,6 +7,11 @@ require (
 	golang.zx2c4.com/wireguard v0.0.0-20220407013110-ef5c587f782d
 	golang.zx2c4.com/wireguard/tun/netstack v0.0.0-20220407013110-ef5c587f782d
 	gopkg.in/ini.v1 v1.66.4
+	gvisor.dev/gvisor v0.0.0-20211020211948-f76a604701b6
+// gvisor.dev/gvisor v0.0.0-20220520211629-7e72240f4f2e
 )
+
+//replace golang.zx2c4.com/wireguard => ./wireguard-go
+replace golang.zx2c4.com/wireguard/tun/netstack => ./wireguard-go/tun/netstack
 
 go 1.13
