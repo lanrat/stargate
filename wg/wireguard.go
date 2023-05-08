@@ -31,6 +31,8 @@ type WG struct {
 func Start(cfg Config) (*WG, error) {
 	iface := cfg.Interface
 
+	//tun.CreateTUN("tun0",)
+
 	tun, tnet, err := netstack.CreateNetTUN(iface.Address, iface.DNS, iface.MTU)
 	if err != nil {
 		return nil, err

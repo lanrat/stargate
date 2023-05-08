@@ -1,29 +1,50 @@
-package wg
+package netstack
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
-	"gvisor.dev/gvisor/pkg/tcpip/stack"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/waiter"
 )
 
-// DialTCP creates a new TCPConn connected to the specified address.
-func DialTCP(s *stack.Stack, addr tcpip.FullAddress, network tcpip.NetworkProtocolNumber) (*gonet.TCPConn, error) {
-	return DialContextTCP(context.Background(), s, addr, network)
+type tcpError struct {
+	err tcpip.Error
+}
+
+func (t *tcpError) Error() string {
+	if t.err == nil {
+		return ""
+	}
+	return t.err.String()
+}
+
+func (n *Net) Spoof(i tcpip.NICID) error {
+	err := n.stack.SetSpoofing(i, true)
+	if err != nil {
+		tErr := tcpError{err: err}
+		return &tErr
+	}
+	return nil
+}
+
+func (n *Net) DialTCPWithBindAddr(ctx context.Context, local, remote netip.AddrPort) (*gonet.TCPConn, error) {
+	localAddr, _ := convertToFullAddr(local)
+	remoteAddr, pn := convertToFullAddr(remote)
+	return n.DialTCPWithBind(ctx, localAddr, remoteAddr, pn)
 }
 
 // DialTCPWithBind creates a new TCPConn connected to the specified
 // remoteAddress with its local address bound to localAddr.
-func DialTCPWithBind(ctx context.Context, s *stack.Stack, localAddr, remoteAddr tcpip.FullAddress, network tcpip.NetworkProtocolNumber) (*gonet.TCPConn, error) {
+func (n *Net) DialTCPWithBind(ctx context.Context, localAddr, remoteAddr tcpip.FullAddress, network tcpip.NetworkProtocolNumber) (*gonet.TCPConn, error) {
 	// Create TCP endpoint, then connect.
 	var wq waiter.Queue
-	ep, err := s.NewEndpoint(tcp.ProtocolNumber, network, &wq)
+	ep, err := n.stack.NewEndpoint(tcp.ProtocolNumber, network, &wq)
 	if err != nil {
 		return nil, errors.New(err.String())
 	}
@@ -31,8 +52,6 @@ func DialTCPWithBind(ctx context.Context, s *stack.Stack, localAddr, remoteAddr 
 	// Create wait queue entry that notifies a channel.
 	//
 	// We do this unconditionally as Connect will always return an error.
-	// waitEntry, notifyCh := waiter.NewChannelEntry(waiter.WritableEvents)
-	// wq.EventRegister(&waitEntry)
 	waitEntry, notifyCh := waiter.NewChannelEntry(nil)
 	wq.EventRegister(&waitEntry, waiter.WritableEvents)
 	defer wq.EventUnregister(&waitEntry)
@@ -76,10 +95,4 @@ func DialTCPWithBind(ctx context.Context, s *stack.Stack, localAddr, remoteAddr 
 
 func fullToTCPAddr(addr tcpip.FullAddress) *net.TCPAddr {
 	return &net.TCPAddr{IP: net.IP(addr.Addr), Port: int(addr.Port)}
-}
-
-// DialContextTCP creates a new TCPConn connected to the specified address
-// with the option of adding cancellation and timeouts.
-func DialContextTCP(ctx context.Context, s *stack.Stack, addr tcpip.FullAddress, network tcpip.NetworkProtocolNumber) (*gonet.TCPConn, error) {
-	return DialTCPWithBind(ctx, s, tcpip.FullAddress{} /* localAddr */, addr /* remoteAddr */, network)
 }

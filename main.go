@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/big"
 	"math/rand"
 	"net"
 	"net/netip"
@@ -33,10 +32,6 @@ var (
 	l        = log.New(os.Stderr, "", log.LstdFlags)
 	resolver socks5.NameResolver
 	wgNet    *wg.WG
-)
-
-const (
-	maxProxies = 10000
 )
 
 func main() {
@@ -67,11 +62,15 @@ func main() {
 	}
 
 	if *port == 0 && *random == 0 {
-		l.Fatal("no SOCKS proxy ports provided, pass -port and/or -random")
+		fmt.Fprintf(os.Stderr, "no SOCKS proxy ports provided, pass -port and/or -random\n")
+		flag.Usage()
+		return
 	}
 
 	_, cidr, err := net.ParseCIDR(*localSubnet)
 	check(err)
+
+	// TODO test that the cidr is allowed to be used on this machine
 
 	// calculate number of proxies about to start
 	// show warning if too large
@@ -89,20 +88,19 @@ func main() {
 	var work errgroup.Group
 	// start proxies for port range
 	if *port != 0 {
-		// show warning if subnet too large
-		if subnetSize.Cmp(big.NewInt(math.MaxInt32)) > 0 {
-			l.Fatalf("proxy range provided larger than MaxInt32")
-		}
-		if subnetSize.Cmp(big.NewInt(maxProxies)) > 0 {
-			l.Fatalf("proxy range provided too large %s > %d", subnetSize.String(), maxProxies)
-		}
 
 		ipList, err := hosts(cidr)
 		check(err)
 
+		highPort := int(*port) + len(ipList) - 1
+		// check if subnet too large
+		if highPort > math.MaxUint16 {
+			l.Fatalf("last proxy port %d is higher than highest allowed port (MaxUint16)", highPort)
+		}
+
 		// check that random port is outside range of other proxies
-		if *random != 0 && *random >= *port && int(*random) < (int(*port)+len(ipList)) {
-			l.Fatalf("random port %d inside range %d-%d", *random, *port, int(*port)+len(ipList))
+		if (*random != 0) && (*random >= *port) && (int(*random) <= highPort) {
+			l.Fatalf("random port %d inside range %d-%d", *random, *port, highPort)
 		}
 
 		l.Printf("starting on %s\n", cidr.String())

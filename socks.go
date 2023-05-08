@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/haxii/socks5"
-	"golang.zx2c4.com/wireguard/tun/netstack"
+	//"golang.zx2c4.com/wireguard/tun/netstack"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
 // runProxy starts a SOCKS proxy for proxyIP listening on listenAddr
@@ -36,7 +37,7 @@ func runProxy(proxyIP net.IP, listenAddr string) error {
 	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
-func runWgProxy(cidr *net.IPNet, listenAddr string, tnet *netstack.Net) error {
+func runWgProxy(cidr *net.IPNet, listenAddr string, tnet *stack.Net) error {
 	conf := &socks5.Config{
 		Logger:   l,
 		Resolver: resolver,
