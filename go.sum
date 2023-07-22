@@ -1,3 +1,5 @@
+github.com/dspinhirne/netaddr-go v0.0.0-20211008142535-a4c5bccad224 h1:Y7k0gYiBQz/sMahnvLzM9I40UOvCeQ8WVjjsBeCtFF8=
+github.com/dspinhirne/netaddr-go v0.0.0-20211008142535-a4c5bccad224/go.mod h1:j1oDdmBtACJEAQr2T3DQNZQDfSuJzRKHadPABYd/MHo=
 github.com/haxii/socks5 v1.0.0 h1:78BIzd4lHibdRNOKdMwKCnnsgYLW9SeotqU+nMhWSSo=
 github.com/haxii/socks5 v1.0.0/go.mod h1:6O9Ba2yrLlvuSe/L1e84eZI8cPw6H+q1Ilr4hjgm4uY=
 golang.org/x/sync v0.0.0-20220513210516-0976fa681c29 h1:w8s32wxx3sY+OjLlv9qltkLU5yvJzxjjgiHWLjdIcw4=
