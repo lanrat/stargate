@@ -13,7 +13,7 @@ func controlFreebind(network, address string, c syscall.RawConn) error {
 }
 
 // from https://github.com/zrepl/zrepl/blob/master/util/tcpsock/tcpsock_freebind_linux.go
-func freeBind(network, address string, c syscall.RawConn) error {
+func freeBind(_, _ string, c syscall.RawConn) error {
 	var err, sockErr error
 	err = c.Control(func(fd uintptr) {
 		// apparently, this works for both IPv4 and IPv6
