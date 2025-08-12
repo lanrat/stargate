@@ -2,10 +2,15 @@
 FROM golang:alpine AS build-env
 RUN apk update && apk add --no-cache make git
 
+# Accept VERSION as a build argument
+ARG VERSION
+ENV VERSION=${VERSION}
+
 WORKDIR /go/app/
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
-ENV CGO_ENABLED=0
-RUN make deps
 RUN make
 
 # final stage

@@ -1,0 +1,16 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+        "buildx",
+        "goarch",
+        "golangci",
+        "goreleaser",
+        "ldflags",
+        "trimpath"
+    ],
+    "ignoreWords": [],
+    "import": []
+}

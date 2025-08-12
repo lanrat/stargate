@@ -18,15 +18,17 @@ import (
 
 // flags
 var (
-	listenIP = flag.String("listen", "localhost", "IP to listen on")
-	port     = flag.Uint("port", 0, "first port to start listening on")
-	random   = flag.Uint("random", 0, "port to use for random proxy server")
-	verbose  = flag.Bool("verbose", false, "enable verbose logging")
+	listenIP     = flag.String("listen", "localhost", "IP to listen on")
+	port         = flag.Uint("port", 0, "first port to start listening on")
+	random       = flag.Uint("random", 0, "port to use for random proxy server")
+	verbose      = flag.Bool("verbose", false, "enable verbose logging")
+	printVersion = flag.Bool("version", false, "print version and exit")
 )
 
 var (
 	l        = log.New(os.Stderr, "", log.LstdFlags)
 	resolver socks5.NameResolver
+	version  = "dev"
 )
 
 const (
@@ -35,6 +37,11 @@ const (
 
 func main() {
 	flag.Parse()
+	// check for version flag
+	if *printVersion {
+		fmt.Println(showVersion())
+		return
+	}
 	if flag.NArg() != 1 {
 		flag.Usage = func() {
 			fmt.Fprintf(os.Stderr, "Usage of %s: [OPTION]... CIDR\n\tCIDR example: \"192.0.2.0/24\"\nOPTIONS:\n", os.Args[0])
@@ -122,4 +129,9 @@ func v(format string, a ...interface{}) {
 	if *verbose {
 		l.Printf(format, a...)
 	}
+}
+
+// showVersion returns a formatted version string for display.
+func showVersion() string {
+	return fmt.Sprintf("Version: %s", version)
 }

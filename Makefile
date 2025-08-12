@@ -1,30 +1,24 @@
-.PHONY: all fmt clean docker check
+default: stargate
 
-all: stargate
+RELEASE_DEPS = fmt lint
+include release.mk
+
+.PHONY: all fmt clean docker lint
 
 stargate: *.go go.mod
-	CGO_ENABLED=0 go build -ldflags "-w -s" -trimpath -a -installsuffix cgo -o $@
+	CGO_ENABLED=0 go build -ldflags "-w -s -X main.version=${VERSION}" -trimpath -o $@
 
 clean:
 	rm stargate
 
 fmt:
-	gofmt -s -w -l .
-
-check: | lint check1 check2
-
-check1:
-	golangci-lint run
-
-check2:
-	staticcheck -f stylish -checks all ./...
+	go fmt ./...
 
 lint:
-	golint ./...
-
+	golangci-lint run
 
 docker: Dockerfile *.go go.mod
-	docker build -t lanrat/stargate .
+	docker build -t lanrat/stargate --build-arg VERSION=${VERSION} .
 
 update-deps: go.mod
 	GOPROXY=direct go get -u ./...
@@ -32,3 +26,7 @@ update-deps: go.mod
 
 deps: go.mod
 	GOPROXY=direct go mod download
+
+.PHONY: goreleaser
+goreleaser:
+	goreleaser release --snapshot --clean
