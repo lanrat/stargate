@@ -36,7 +36,8 @@ func dupIP(ip net.IP) net.IP {
 	return dup
 }
 
-//  inc increments an IP
+//	inc increments an IP
+//
 // http://play.golang.org/p/m8TNTtygK0
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
