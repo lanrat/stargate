@@ -6,11 +6,9 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"math/rand"
 	"net"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/haxii/socks5"
 	"golang.org/x/sync/errgroup"
@@ -105,7 +103,6 @@ func main() {
 
 	// start random proxy if -random set
 	if *random != 0 {
-		rand.Seed(time.Now().Unix())
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)
