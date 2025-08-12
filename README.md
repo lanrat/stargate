@@ -19,6 +19,8 @@ OPTIONS:
         port to use for random proxy server
   -verbose
         enable verbose logging
+  -version
+        print version and exit
 ```
 
 ## Random
@@ -41,9 +43,18 @@ The following will start a single socks proxy listening on 127.0.0.1:1337 egress
 
 ```
 
-### [Docker](https://cloud.docker.com/repository/docker/lanrat/stargate)
+## Download
+
+### [Precompiled Binaries](https://github.com/lanrat/stargate/releases)
+
+
+### [Docker](https://github.com/lanrat/stargate/pkgs/container/stargate)
 
 Stargate can be run inside Docker as well, but it will require fancy routing rules or `--net=host`.
+
+```shell
+docker pull ghcr.io/lanrat/stargate:latest
+```
 
 ## Building
 
