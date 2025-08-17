@@ -1,66 +1,44 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
 	"net"
+	"net/netip"
 )
 
 // TODO possible enhancement
 // dial from iface: https://gist.github.com/creack/43ee6542ddc6fe0da8c02bd723d5cc53
 
 // hosts returns a slice of all usable host IP addresses within the given CIDR range.
-// It excludes network addresses ending in .0 for IPv4 (which can leak real IPs on some hosts)
-// and the broadcast address for IPv4 networks.
-// from: https://gist.github.com/kotakanbe/d3059af990252ba89a82
-// TODO update: https://gist.github.com/kotakanbe/d3059af990252ba89a82?permalink_comment_id=4105265#gistcomment-4105265
+// It excludes the network address and broadcast address for IPv4 networks.
+// Uses the modern netip package for cleaner iteration.
+// Updated based on: https://gist.github.com/kotakanbe/d3059af990252ba89a82?permalink_comment_id=4105265#gistcomment-4105265
 func hosts(cidr *net.IPNet) ([]net.IP, error) {
-	ips := make([]net.IP, 0, maskSize64(&cidr.Mask))
-	for ip := cidr.IP.Mask(cidr.Mask); cidr.Contains(ip); inc(ip) {
-		// don't add IPv4 addresses ending in .0, on most hosts they leak the real IP
-		if ipv4 := ip.To4(); ipv4 != nil && ipv4[3] == 0 {
-			continue
-		}
-		// using dupIP to prevent all of the IP's referencing the same array in memory
-		ips = append(ips, dupIP(ip))
+	// Convert to netip.Prefix for cleaner iteration
+	ip, ok := netip.AddrFromSlice(cidr.IP)
+	if !ok {
+		return nil, fmt.Errorf("invalid IP address")
 	}
-	// remove ipv4 broadcast address
-	if ip4 := cidr.IP.To4(); ip4 != nil && len(ips) > 1 {
-		return ips[0 : len(ips)-1], nil
+	ones, _ := cidr.Mask.Size()
+	prefix := netip.PrefixFrom(ip.Unmap(), ones)
+
+	var ips []net.IP
+	for addr := prefix.Addr(); prefix.Contains(addr); addr = addr.Next() {
+		// Convert netip.Addr back to net.IP
+		ips = append(ips, net.IP(addr.AsSlice()))
 	}
 
-	return ips, nil
-}
-
-// dupIP returns a copy of the provided IP address to prevent multiple references
-// to the same underlying array.
-func dupIP(ip net.IP) net.IP {
-	dup := make(net.IP, len(ip))
-	copy(dup, ip)
-	return dup
-}
-
-// inc increments an IP address by one, modifying it in place.
-// http://play.golang.org/p/m8TNTtygK0
-func inc(ip net.IP) {
-	for j := len(ip) - 1; j >= 0; j-- {
-		ip[j]++
-		if ip[j] > 0 {
-			break
-		}
+	// For single host or empty range, return as-is
+	if len(ips) < 2 {
+		return ips, nil
 	}
-}
 
-// maskSize64 returns the number of addresses in the network mask as an int64.
-// Returns -1 if the address space is too large to fit in an int64.
-func maskSize64(m *net.IPMask) int64 {
-	maskBits, totalBits := m.Size()
-	addrBits := totalBits - maskBits
-	if addrBits > 63 { // 63 is max positive int size
-		return -1
-	}
-	return 1 << addrBits
+	// Remove network and broadcast addresses (first and last)
+	// This handles both IPv4 and IPv6 appropriately
+	return ips[1 : len(ips)-1], nil
 }
 
 // maskSize returns the number of addresses in the network mask as a big.Int,
