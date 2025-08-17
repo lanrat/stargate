@@ -8,6 +8,8 @@ import (
 	"syscall"
 )
 
+// controlFreebind sets the IP_BINDANY or IPV6_BINDANY socket option on FreeBSD,
+// allowing the socket to bind to IP addresses that are not yet configured on the system.
 func controlFreebind(network, address string, c syscall.RawConn) error {
 	if err := freeBind(network, address, c); err != nil {
 		return err
@@ -15,6 +17,8 @@ func controlFreebind(network, address string, c syscall.RawConn) error {
 	return nil
 }
 
+// freeBind enables the appropriate BINDANY socket option based on the network type.
+// For IPv4 it sets IP_BINDANY, and for IPv6 it sets IPV6_BINDANY.
 // from https://github.com/zrepl/zrepl/blob/master/util/tcpsock/tcpsock_freebind_freebsd.go
 func freeBind(network, _ string, c syscall.RawConn) error {
 	var err, sockErr error

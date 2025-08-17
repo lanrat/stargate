@@ -10,7 +10,8 @@ import (
 	"github.com/lanrat/stargate/permute"
 )
 
-// runProxy starts a SOCKS proxy for proxyAddr listening on listenAddr
+// runProxy starts a SOCKS5 proxy server listening on listenAddr that egresses
+// all connections from the specified proxyIP address.
 func runProxy(proxyIP net.IP, listenAddr string) error {
 	proxyAddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort(proxyIP.String(), "0"))
 	if err != nil {
@@ -35,7 +36,8 @@ func runProxy(proxyIP net.IP, listenAddr string) error {
 	return server.ListenAndServe(proxyAddr.Network(), listenAddr)
 }
 
-// runRandomProxy starts a proxy listening on listenAddr that egresses every connection on a new random port in cider
+// runRandomProxy starts a SOCKS5 proxy server listening on listenAddr that egresses
+// each connection from a different random IP address within the specified CIDR range.
 func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
 	conf := &socks5.Config{
 		Logger:   l,
@@ -59,9 +61,10 @@ func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
 	return server.ListenAndServe("tcp", listenAddr)
 }
 
-// runRandomSubnetProxy starts a proxy listening on listenAddr that egresses every connection on a subnet
-// in the cidr range defined. It uses a RandomParallelIterator to evenly distribute connections across
-// subnets without pre-generating all subnet addresses (memory efficient for large IPv6 ranges).
+// runRandomSubnetProxy starts a SOCKS5 proxy server listening on listenAddr that distributes
+// connections across random subnets within the specified IP range. It divides the main CIDR
+// into smaller subnets of size newCidr and randomly selects a subnet for each connection.
+// This is memory efficient for large IPv6 ranges as it doesn't pre-generate all addresses.
 func runRandomSubnetProxy(listenAddr string, iprange string, newCidr uint) error {
 	parsedNetwork, err := netip.ParsePrefix(iprange)
 	if err != nil {

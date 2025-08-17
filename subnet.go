@@ -5,6 +5,8 @@ import (
 	"net/netip"
 )
 
+// subnetCount calculates the number of subnets of size newBits that can fit
+// within the given network prefix.
 func subnetCount(network netip.Prefix, newBits int) uint64 {
 	originalBits := network.Bits()
 	if newBits <= originalBits {
@@ -25,6 +27,9 @@ func subnetCount(network netip.Prefix, newBits int) uint64 {
 	return 1 << additionalBits
 }
 
+// nthSubnet returns the nth subnet of size newBits within the given network prefix.
+// Returns false if the subnet index is out of bounds or if newBits is smaller than
+// the network's prefix length.
 func nthSubnet(network netip.Prefix, newBits int, n uint64) (netip.Prefix, bool) {
 	if newBits < network.Bits() {
 		return netip.Prefix{}, false
@@ -42,6 +47,8 @@ func nthSubnet(network netip.Prefix, newBits int, n uint64) (netip.Prefix, bool)
 	return nthSubnetIPv6(network, newBits, n)
 }
 
+// nthSubnetIPv4 calculates the nth IPv4 subnet of the specified size within the network.
+// This is a helper function for nthSubnet that handles IPv4-specific logic.
 func nthSubnetIPv4(network netip.Prefix, newBits int, n uint64) (netip.Prefix, bool) {
 	baseAddr := network.Addr()
 	if !baseAddr.Is4() {
@@ -64,6 +71,9 @@ func nthSubnetIPv4(network netip.Prefix, newBits int, n uint64) (netip.Prefix, b
 	return netip.PrefixFrom(newAddr, newBits), true
 }
 
+// nthSubnetIPv6 calculates the nth IPv6 subnet of the specified size within the network.
+// This is a helper function for nthSubnet that handles IPv6-specific logic using big.Int
+// for the large address space calculations.
 func nthSubnetIPv6(network netip.Prefix, newBits int, n uint64) (netip.Prefix, bool) {
 	baseAddr := network.Addr()
 	if !baseAddr.Is6() {

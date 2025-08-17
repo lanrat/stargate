@@ -1,3 +1,5 @@
+// Package main implements Stargate, a TCP SOCKS proxy server that can egress
+// traffic from multiple IP addresses within a subnet.
 package main
 
 import (
@@ -19,7 +21,7 @@ var (
 	listenIP     = flag.String("listen", "localhost", "IP to listen on")
 	port         = flag.Uint("port", 0, "first port to start listening on")
 	random       = flag.Uint("random", 0, "port to use for random proxy server")
-	randsubnet   = flag.Uint("randsubnet", 0, "")
+	subnetBits   = flag.Uint("subnet-size", 0, "CIDR prefix length for random subnet proxy (e.g., 24 for /24 subnets)")
 	verbose      = flag.Bool("verbose", false, "enable verbose logging")
 	printVersion = flag.Bool("verbose", false, "enable verbose logging")
 )
@@ -102,17 +104,17 @@ func main() {
 		l.Printf("started %d proxies\n", started)
 	}
 
-	// start random subnet proxy if -randsubnet set
-	if *randsubnet != 0 && *random != 0 {
+	// start random subnet proxy if -subnet-size set
+	if *subnetBits != 0 && *random != 0 {
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random subnet egress proxy %s\n", addrStr)
-			return runRandomSubnetProxy(addrStr, proxy, *randsubnet)
+			return runRandomSubnetProxy(addrStr, proxy, *subnetBits)
 		})
 	}
 
 	// start random proxy if -random set
-	if *random != 0 && *randsubnet == 0 {
+	if *random != 0 && *subnetBits == 0 {
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)
@@ -124,14 +126,14 @@ func main() {
 	check(err)
 }
 
-// check checks errors
+// check exits the program with a fatal error if err is not nil.
 func check(err error) {
 	if err != nil {
 		l.Fatal(err)
 	}
 }
 
-// v verbose logging
+// v logs a message if verbose logging is enabled.
 func v(format string, a ...interface{}) {
 	if *verbose {
 		l.Printf(format, a...)

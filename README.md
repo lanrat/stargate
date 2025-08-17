@@ -17,6 +17,8 @@ OPTIONS:
         first port to start listening on
   -random uint
         port to use for random proxy server
+  -subnet-size uint
+        CIDR prefix length for random subnet proxy (e.g., 24 for /24 subnets)
   -verbose
         enable verbose logging
   -version
@@ -27,6 +29,8 @@ OPTIONS:
 
 The `-random` flag starts a SOCKS5 proxy that egresses traffic on a random IP in the subnet.
 This is useful to avoid rate-limiting or in situations where there are too many IPs in the subnet to listen on each port which is common with IPv6.
+
+When used with `-subnet-size`, the proxy will randomly distribute connections across different subnets within the main CIDR range. For example, with a /48 IPv6 block and `-subnet-size 64`, connections will be distributed across random /64 subnets.
 
 ## Example
 
@@ -40,7 +44,12 @@ The following will start a single socks proxy listening on 127.0.0.1:1337 egress
 
 ```console
 ./stargate -random 1337 2001:DB8:1337::1/64
+```
 
+The following will start a single socks proxy listening on 127.0.0.1:8080 that distributes connections across random /64 subnets within a /48 IPv6 block:
+
+```console
+./stargate -random 8080 -subnet-size 64 2001:DB8:1337::/48
 ```
 
 ## Download
