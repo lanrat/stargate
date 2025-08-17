@@ -30,3 +30,8 @@ deps: go.mod
 .PHONY: goreleaser
 goreleaser:
 	goreleaser release --snapshot --clean
+
+
+.PHONY: test
+test:
+	go test -v ./...
