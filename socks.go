@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"net"
 	"math/rand"
-	"time"
+	"net"
+
 	"github.com/haxii/socks5"
 )
 
@@ -62,8 +62,10 @@ func runRandomProxy(cidr *net.IPNet, listenAddr string) error {
 // that a subnet is only reused after all the others have been used.
 func runRandomSubnetProxy(listenAddr string, iprange string, newCidr uint) error {
 	subnets, err := breakIntoSubnets(iprange, newCidr)
-    rand.Seed(time.Now().UnixNano())
-    rand.Shuffle(len(subnets), func(i, j int) { subnets[i], subnets[j] = subnets[j], subnets[i] })
+	if err != nil {
+		return nil
+	}
+	rand.Shuffle(len(subnets), func(i, j int) { subnets[i], subnets[j] = subnets[j], subnets[i] })
 
 	v("we were given network %s with a cidr of %d. our subnet pool size is %d", iprange, newCidr, len(subnets))
 
@@ -82,12 +84,12 @@ func runRandomSubnetProxy(listenAddr string, iprange string, newCidr uint) error
 		ip := randomIP(cidr)
 		subnet_pointer++
 
-        // Reset pointer to wrap around once an IP
-        // from each subnet has been used.
-        if subnet_pointer >= len(subnets) {
-            v("used all the subnets in our pool, looping back around...")
-            subnet_pointer = 0
-        }
+		// Reset pointer to wrap around once an IP
+		// from each subnet has been used.
+		if subnet_pointer >= len(subnets) {
+			v("used all the subnets in our pool, looping back around...")
+			subnet_pointer = 0
+		}
 
 		v("random %s proxy (%q) request for: %q", network, ip.String(), addr)
 		d := net.Dialer{
