@@ -19,8 +19,9 @@ var (
 	listenIP     = flag.String("listen", "localhost", "IP to listen on")
 	port         = flag.Uint("port", 0, "first port to start listening on")
 	random       = flag.Uint("random", 0, "port to use for random proxy server")
+	randsubnet   = flag.Uint("randsubnet", 0, "")
 	verbose      = flag.Bool("verbose", false, "enable verbose logging")
-	printVersion = flag.Bool("version", false, "print version and exit")
+	printVersion = flag.Bool("verbose", false, "enable verbose logging")
 )
 
 var (
@@ -101,8 +102,17 @@ func main() {
 		l.Printf("started %d proxies\n", started)
 	}
 
+	// start random subnet proxy if -randsubnet set
+	if *randsubnet != 0 && *random != 0 {
+		work.Go(func() error {
+			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
+			l.Printf("Starting random subnet egress proxy %s\n", addrStr)
+			return runRandomSubnetProxy(addrStr, proxy, *randsubnet)
+		})
+	}
+
 	// start random proxy if -random set
-	if *random != 0 {
+	if *random != 0 && *randsubnet == 0 {
 		work.Go(func() error {
 			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
 			l.Printf("Starting random egress proxy %s\n", addrStr)

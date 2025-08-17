@@ -16,7 +16,7 @@ func controlFreebind(network, address string, c syscall.RawConn) error {
 func freeBind(_, _ string, c syscall.RawConn) error {
 	var err, sockErr error
 	err = c.Control(func(fd uintptr) {
-		// apparently, this works for both IPv4 and IPv6
+		// this works for both IPv4 and IPv6
 		sockErr = syscall.SetsockoptInt(int(fd), syscall.SOL_IP, syscall.IP_FREEBIND, 1)
 	})
 	if err != nil {

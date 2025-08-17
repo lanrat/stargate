@@ -4,11 +4,15 @@
     "dictionaryDefinitions": [],
     "dictionaries": [],
     "words": [
+        "bijective",
         "buildx",
+        "congruential",
         "goarch",
+        "godoc",
         "golangci",
         "goreleaser",
         "ldflags",
+        "Mersenne",
         "trimpath"
     ],
     "ignoreWords": [],

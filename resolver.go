@@ -10,7 +10,7 @@ type DNSResolver struct {
 	network string
 }
 
-// Resolve with but use the same address family as the binding IP
+// Resolve using same address family as the binding IP
 func (d DNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
 	//v("resolving %q: %q", d.network, name)
 	addr, err := net.ResolveIPAddr(d.network, name)
