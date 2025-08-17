@@ -1,13 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
 	"net"
-
-	netaddr "github.com/dspinhirne/netaddr-go"
 )
 
 // TODO possible enhancement
@@ -87,52 +84,4 @@ func getIPNetwork(ip *net.IP) string {
 		return "ip4"
 	}
 	return "ip6"
-}
-
-// modified from https://stackoverflow.com/a/76171539
-// This is so we can evenly distribute requests into subnets across
-// a large IP range (vs just across IPs in a range). This is useful
-// for when you're restricted by subnet instead of by a specific IP.
-// (e.g. a common occurrence in IPv6)
-func breakIntoSubnets(network string, newCidr uint) ([]string, error) {
-	ip, _, err := net.ParseCIDR(network)
-	if err != nil {
-		fmt.Println("Error while parsing cidr:", err)
-		return nil, err
-	}
-
-	if ip.To4() != nil {
-		parsedNetwork, err := netaddr.ParseIPv4Net(network)
-		if err != nil {
-			fmt.Printf("Error parsing network (%s) with netaddrr", network)
-			return nil, err
-		}
-		subnets := make([]string, 0)
-		for i := 0; i <= int(parsedNetwork.SubnetCount(newCidr)); i++ {
-			subnet := parsedNetwork.NthSubnet(newCidr, uint32(i))
-			if subnet == nil {
-				return subnets, nil
-			}
-			subnets = append(subnets, subnet.String())
-		}
-
-		return subnets, nil
-	} else {
-		parsedNetwork, err := netaddr.ParseIPv6Net(network)
-		if err != nil {
-			fmt.Printf("Error parsing network (%s) with netaddrr", network)
-			return nil, err
-		}
-		subnets := make([]string, 0)
-		for i := 0; i <= int(parsedNetwork.SubnetCount(newCidr)); i++ {
-			subnet := parsedNetwork.NthSubnet(newCidr, uint64(i))
-			if subnet == nil {
-				return subnets, nil
-			}
-			subnets = append(subnets, subnet.String())
-		}
-
-		return subnets, nil
-	}
-
 }
