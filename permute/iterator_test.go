@@ -25,7 +25,7 @@ func TestNewUniqueRand(t *testing.T) {
 		{
 			name:    "single element range",
 			low:     big.NewInt(42),
-			high:    big.NewInt(42),
+			high:    big.NewInt(43),
 			wantErr: false,
 		},
 		{
@@ -37,19 +37,19 @@ func TestNewUniqueRand(t *testing.T) {
 		{
 			name:    "32-bit range",
 			low:     big.NewInt(0),
-			high:    big.NewInt(1<<32 - 1),
+			high:    big.NewInt(1 << 32),
 			wantErr: false,
 		},
 		{
 			name:    "64-bit range",
 			low:     big.NewInt(0),
-			high:    big.NewInt(1<<63 - 1),
+			high:    new(big.Int).Lsh(big.NewInt(1), 63),
 			wantErr: false,
 		},
 		{
 			name:    "large 128-bit range",
 			low:     big.NewInt(0),
-			high:    new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 127), big.NewInt(1)),
+			high:    new(big.Int).Lsh(big.NewInt(1), 127),
 			wantErr: false,
 		},
 	}
@@ -93,7 +93,6 @@ func TestUniqueRand_NextAt(t *testing.T) {
 			}
 
 			size := new(big.Int).Sub(tc.high, tc.low)
-			size.Add(size, big.NewInt(1))
 
 			// Use a smaller sample for large ranges
 			sampleSize := size
@@ -107,8 +106,8 @@ func TestUniqueRand_NextAt(t *testing.T) {
 				num := iterator.NextAt(new(big.Int).Set(i))
 
 				// Check if number is within bounds
-				if num.Cmp(tc.low) < 0 || num.Cmp(tc.high) > 0 {
-					t.Errorf("generated number %s is out of range [%s, %s]", num, tc.low, tc.high)
+				if num.Cmp(tc.low) < 0 || num.Cmp(tc.high) >= 0 {
+					t.Errorf("generated number %s is out of range [%s, %s)", num, tc.low, tc.high)
 				}
 
 				// Check for duplicates
@@ -147,14 +146,13 @@ func Test32BitPath(t *testing.T) {
 		t.Error("Expected 32-bit optimization to be enabled")
 	}
 
-	expectedSize := uint32(21)
+	expectedSize := uint32(20)
 	if iterator.size32 != expectedSize {
 		t.Errorf("Expected size32 = %d, got %d", expectedSize, iterator.size32)
 	}
 
 	// Collect all values
 	size := new(big.Int).Sub(high, low)
-	size.Add(size, big.NewInt(1))
 
 	values := make([]int, 0, size.Int64())
 	seen := make(map[int]bool)
@@ -176,7 +174,7 @@ func Test32BitPath(t *testing.T) {
 	}
 
 	// Verify range coverage
-	for i := 100; i <= 120; i++ {
+	for i := 100; i < 120; i++ {
 		if !seen[i] {
 			t.Errorf("Missing value in permutation: %d", i)
 		}
@@ -204,8 +202,8 @@ func Test64BitPath(t *testing.T) {
 	for i := big.NewInt(0); i.Cmp(big.NewInt(100)) < 0; i.Add(i, big.NewInt(1)) {
 		num := iterator.NextAt(i)
 
-		if num.Cmp(low) < 0 || num.Cmp(high) > 0 {
-			t.Errorf("Value %s out of range [%s, %s]", num, low, high)
+		if num.Cmp(low) < 0 || num.Cmp(high) >= 0 {
+			t.Errorf("Value %s out of range [%s, %s)", num, low, high)
 		}
 
 		key := num.String()
@@ -237,8 +235,8 @@ func TestBigIntPath(t *testing.T) {
 	for i := big.NewInt(0); i.Cmp(big.NewInt(100)) < 0; i.Add(i, big.NewInt(1)) {
 		num := iterator.NextAt(i)
 
-		if num.Cmp(low) < 0 || num.Cmp(high) > 0 {
-			t.Errorf("Value %s out of range [%s, %s]", num, low, high)
+		if num.Cmp(low) < 0 || num.Cmp(high) >= 0 {
+			t.Errorf("Value %s out of range [%s, %s)", num, low, high)
 		}
 
 		key := num.String()
@@ -283,7 +281,7 @@ func TestParallelIterator(t *testing.T) {
 				count++
 
 				// Check bounds - this is critical
-				if num.Cmp(low) < 0 || num.Cmp(high) > 0 {
+				if num.Cmp(low) < 0 || num.Cmp(high) >= 0 {
 					mu.Lock()
 					outOfRange++
 					mu.Unlock()
@@ -318,7 +316,7 @@ func TestParallelIteratorExhaustion(t *testing.T) {
 
 	// Small range to test exhaustion
 	low := big.NewInt(0)
-	high := big.NewInt(99)
+	high := big.NewInt(100)
 
 	iterator, err := NewParallelIterator(low, high)
 	if err != nil {
@@ -362,7 +360,7 @@ func TestSizeAndLowMethods(t *testing.T) {
 		t.Fatalf("failed to create iterator: %v", err)
 	}
 
-	expectedSize := big.NewInt(101)
+	expectedSize := big.NewInt(100)
 	if iterator.Size().Cmp(expectedSize) != 0 {
 		t.Errorf("Expected size %s, got %s", expectedSize, iterator.Size())
 	}
@@ -373,7 +371,7 @@ func TestSizeAndLowMethods(t *testing.T) {
 }
 
 func Benchmark32Bit(b *testing.B) {
-	iterator, _ := NewUniqueRand(big.NewInt(0), big.NewInt(1<<20))
+	iterator, _ := NewUniqueRand(big.NewInt(0), big.NewInt(1<<20+1))
 	index := big.NewInt(0)
 
 	b.ResetTimer()
@@ -387,7 +385,7 @@ func Benchmark32Bit(b *testing.B) {
 }
 
 func Benchmark64Bit(b *testing.B) {
-	iterator, _ := NewUniqueRand(big.NewInt(1<<40), big.NewInt(1<<40+1<<20))
+	iterator, _ := NewUniqueRand(big.NewInt(1<<40), big.NewInt(1<<40+1<<20+1))
 	index := big.NewInt(0)
 
 	b.ResetTimer()
@@ -402,7 +400,7 @@ func Benchmark64Bit(b *testing.B) {
 
 func BenchmarkBigInt(b *testing.B) {
 	low := new(big.Int).Lsh(big.NewInt(1), 70)
-	high := new(big.Int).Add(low, big.NewInt(1<<20))
+	high := new(big.Int).Add(low, big.NewInt(1<<20+1))
 	iterator, _ := NewUniqueRand(low, high)
 	index := big.NewInt(0)
 
@@ -417,7 +415,7 @@ func BenchmarkBigInt(b *testing.B) {
 }
 
 func BenchmarkParallelIterator(b *testing.B) {
-	iterator, _ := NewParallelIterator(big.NewInt(0), big.NewInt(1<<30))
+	iterator, _ := NewParallelIterator(big.NewInt(0), big.NewInt(1<<30+1))
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -484,8 +482,8 @@ func TestDistribution(t *testing.T) {
 }
 
 func ExampleUniqueRand() {
-	// Create an iterator for range [10, 13]
-	iterator, err := NewUniqueRand(big.NewInt(10), big.NewInt(13))
+	// Create an iterator for range [10, 14)
+	iterator, err := NewUniqueRand(big.NewInt(10), big.NewInt(14))
 	if err != nil {
 		panic(err)
 	}
@@ -513,8 +511,8 @@ func ExampleUniqueRand() {
 }
 
 func ExampleParallelIterator() {
-	// Create a parallel iterator for range [100, 104]
-	iterator, err := NewParallelIterator(big.NewInt(100), big.NewInt(104))
+	// Create a parallel iterator for range [100, 105)
+	iterator, err := NewParallelIterator(big.NewInt(100), big.NewInt(105))
 	if err != nil {
 		panic(err)
 	}

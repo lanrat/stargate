@@ -2,71 +2,80 @@ package main
 
 import (
 	"fmt"
-	"math"
-	"math/big"
-	"math/rand"
 	"net"
 	"net/netip"
 )
 
-// TODO possible enhancement
-// dial from iface: https://gist.github.com/creack/43ee6542ddc6fe0da8c02bd723d5cc53
+// broadcastAddrs is a global map that tracks IP addresses identified as broadcast addresses.
+// It is populated by checkHostConflicts and used to prevent binding to these addresses.
+var broadcastAddrs = make(map[string]bool)
 
-// hosts returns a slice of all usable host IP addresses within the given CIDR range.
-// It excludes the network address and broadcast address for IPv4 networks.
-// Uses the modern netip package for cleaner iteration.
-// Updated based on: https://gist.github.com/kotakanbe/d3059af990252ba89a82?permalink_comment_id=4105265#gistcomment-4105265
-func hosts(cidr *net.IPNet) ([]net.IP, error) {
-	// Convert to netip.Prefix for cleaner iteration
-	ip, ok := netip.AddrFromSlice(cidr.IP)
+// checkHostConflicts detects if any of the addresses we are going to use are broadcast addresses.
+// It populates the global broadcastAddrs map by examining all system network interfaces.
+func checkHostConflicts(prefix *netip.Prefix) error {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return err
+	}
+
+	for _, i := range interfaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			return err
+		}
+		for _, a := range addrs {
+			ipnet, ok := a.(*net.IPNet)
+			if !ok {
+				continue
+			}
+			// We are only interested in IPv4 addresses for broadcast.
+			if ipnet.IP.To4() == nil {
+				continue
+			}
+			brdIP, err := getBroadcastAddressFromAddr(ipnet)
+			if err != nil {
+				return err
+			}
+			brdAddr, ok := netip.AddrFromSlice(brdIP)
+			if !ok {
+				return fmt.Errorf("unable to parse IP to addr: %+v", brdAddr)
+			}
+			if prefix.Contains(brdAddr) {
+				broadcastAddrs[brdAddr.String()] = true
+				l.Printf("WARNING: interface %s broadcast address is within provided prefix %s", i.Name, brdIP)
+			}
+		}
+	}
+
+	return nil
+}
+
+// getBroadcastAddressFromAddr calculates the broadcast address from a net.IPNet.
+// It only supports IPv4 addresses and returns an error for IPv6 or invalid inputs.
+func getBroadcastAddressFromAddr(addr net.Addr) (net.IP, error) {
+	// Type assertion to check if the net.Addr is a *net.IPNet.
+	ipnet, ok := addr.(*net.IPNet)
 	if !ok {
-		return nil, fmt.Errorf("invalid IP address")
-	}
-	ones, _ := cidr.Mask.Size()
-	prefix := netip.PrefixFrom(ip.Unmap(), ones)
-
-	var ips []net.IP
-	for addr := prefix.Addr(); prefix.Contains(addr); addr = addr.Next() {
-		// Convert netip.Addr back to net.IP
-		ips = append(ips, net.IP(addr.AsSlice()))
+		return nil, fmt.Errorf("address is not a net.IPNet type: %T", addr)
 	}
 
-	// For single host or empty range, return as-is
-	if len(ips) < 2 {
-		return ips, nil
+	// Check if the IP is an IPv4 address.
+	if ipnet.IP.To4() == nil {
+		return nil, fmt.Errorf("only IPv4 addresses are supported for broadcast calculation")
 	}
 
-	// Remove network and broadcast addresses (first and last)
-	// This handles both IPv4 and IPv6 appropriately
-	return ips[1 : len(ips)-1], nil
-}
-
-// maskSize returns the number of addresses in the network mask as a big.Int,
-// which can handle arbitrarily large address spaces (e.g., IPv6).
-func maskSize(m *net.IPMask) big.Int {
-	var size big.Int
-	maskBits, totalBits := m.Size()
-	addrBits := totalBits - maskBits
-	size.Lsh(big.NewInt(1), uint(addrBits))
-	return size
-}
-
-// randomIP generates a random IP address within the given CIDR range.
-// It preserves the network portion and randomizes the host portion.
-func randomIP(cidr *net.IPNet) net.IP {
-	ip := cidr.IP
-	for i := range ip {
-		rb := byte(rand.Intn(math.MaxUint8))
-		ip[i] = (cidr.Mask[i] & ip[i]) + (^cidr.Mask[i] & rb)
+	// Perform the bitwise OR calculation.
+	// Use IPv4 representation to avoid length mismatches
+	ip4 := ipnet.IP.To4()
+	mask4 := ipnet.Mask
+	if len(mask4) != 4 {
+		return nil, fmt.Errorf("invalid IPv4 mask length: %d", len(mask4))
 	}
-	return ip
-}
 
-// getIPNetwork returns "ip4" for IPv4 addresses or "ip6" for IPv6 addresses.
-// This is used for DNS resolution context.
-func getIPNetwork(ip *net.IP) string {
-	if ip.To4() != nil {
-		return "ip4"
+	broadcast := make(net.IP, 4)
+	for i := 0; i < 4; i++ {
+		broadcast[i] = ip4[i] | ^mask4[i]
 	}
-	return "ip6"
+
+	return broadcast, nil
 }

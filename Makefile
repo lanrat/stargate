@@ -3,9 +3,12 @@ default: stargate
 RELEASE_DEPS = fmt lint
 include release.mk
 
+SOURCES := $(shell find . -type f -name "*.go")
+
+
 .PHONY: all fmt clean docker lint
 
-stargate: *.go go.mod
+stargate: ${SOURCES} go.mod go.sum
 	CGO_ENABLED=0 go build -ldflags "-w -s -X main.version=${VERSION}" -trimpath -o $@
 
 clean:

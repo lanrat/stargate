@@ -3,131 +3,125 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
-	"math"
-	"math/big"
-	"net"
+	"net/netip"
 	"os"
-	"strconv"
+	"strings"
 
 	"github.com/haxii/socks5"
-	"golang.org/x/sync/errgroup"
 )
 
-// flags
+// Command-line flags
 var (
-	listenIP     = flag.String("listen", "localhost", "IP to listen on")
-	port         = flag.Uint("port", 0, "first port to start listening on")
-	random       = flag.Uint("random", 0, "port to use for random proxy server")
-	subnetBits   = flag.Uint("subnet-size", 0, "CIDR prefix length for random subnet proxy (e.g., 24 for /24 subnets)")
+	listenAddr   = flag.String("listen", "localhost:1080", "listen on specified [IP:]port (e.g., '1337', '127.0.0.1:8080', '[::1]:1080')")
+	subnetBits   = flag.Uint("subnet-size", 0, "CIDR prefix length for random subnet proxy (e.g., 64 for /64 IPv6 subnets)")
 	verbose      = flag.Bool("verbose", false, "enable verbose logging")
-	printVersion = flag.Bool("verbose", false, "enable verbose logging")
+	printVersion = flag.Bool("version", false, "print version and exit")
+	runTest      = flag.Bool("test", false, "run test request on all IPs and exit")
 )
 
+// Global variables
 var (
-	l        = log.New(os.Stderr, "", log.LstdFlags)
+	// l is the logger instance used throughout the application
+	l = log.New(os.Stderr, "", log.LstdFlags)
+	// resolver is the DNS resolver instance for SOCKS5 connections
 	resolver socks5.NameResolver
-	version  = "dev"
+	// version is the application version string, set at build time
+	version = "dev"
 )
 
-const (
-	maxProxies = 10000
-)
-
+// main is the entry point of the Stargate proxy server.
+// It parses command-line flags, validates the CIDR configuration,
+// and starts either the test mode or the SOCKS5 proxy server.
 func main() {
+	// Set custom usage function
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s: [OPTION]... CIDR\n\tCIDR example: \"192.0.2.0/24\"\nOPTIONS:\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 	// check for version flag
 	if *printVersion {
 		fmt.Println(showVersion())
 		return
 	}
+
+	// require CIDR argument
 	if flag.NArg() != 1 {
-		flag.Usage = func() {
-			fmt.Fprintf(os.Stderr, "Usage of %s: [OPTION]... CIDR\n\tCIDR example: \"192.0.2.0/24\"\nOPTIONS:\n", os.Args[0])
-			flag.PrintDefaults()
-		}
 		flag.Usage()
 		return
 	}
-	proxy := flag.Arg(0)
-
-	if *port == 0 && *random == 0 {
-		l.Fatal("no SOCKS proxy ports provided, pass -port and/or -random")
+	cidrStr := flag.Arg(0)
+	parsedNetwork, err := netip.ParsePrefix(cidrStr)
+	if err != nil {
+		l.Fatal(err)
 	}
 
-	_, cidr, err := net.ParseCIDR(proxy)
-	check(err)
+	if !parsedNetwork.IsValid() {
+		l.Fatalf("parsed CIDR: %s is not valid", parsedNetwork.String())
+	}
 
-	// calculate number of proxies about to start
-	// show warning if too large
-	subnetSize := maskSize(&cidr.Mask)
-	v("subnet size %s", subnetSize.String())
+	var maxNetworkBits uint = 32
+	if parsedNetwork.Addr().Is6() {
+		maxNetworkBits = 128
+	}
+
+	// if unset, set to /32 for IPv4 or /128 for IPv6
+	cidrBits := parsedNetwork.Bits()
+	if *subnetBits == 0 {
+		*subnetBits = maxNetworkBits
+	} else {
+		if *subnetBits < uint(cidrBits) {
+			l.Fatalf("passed subnet-size %d must be >= CIDR netmask %d", *subnetBits, cidrBits)
+		}
+	}
+
+	// for now, we only support up to 2^64 different subnet hosts
+	// more could be supported by switching from uint64 to big.Int types.
+	// for even with IPv6, using more than 2^64 networks is incredibly unlikely
+	// if someone dares to do this, error
+	totalNetworks := *subnetBits - uint(cidrBits)
+	if totalNetworks > 64 {
+		log.Fatalf("subnet host range too large. Can't run on over 2^64 networks, got 2^%d", totalNetworks)
+	}
+
+	// check for IP conflicts
+	err = checkHostConflicts(&parsedNetwork)
+	if err != nil {
+		l.Fatal(err)
+	}
+
+	hostsPerNetwork := 1 << (maxNetworkBits - *subnetBits)
+	l.Printf("Running with subnet size /%d and /%d prefix resulting in %d egress networks and %d options per network", *subnetBits, cidrBits, totalNetworks, hostsPerNetwork)
+
+	// test mode
+	if *runTest {
+		// test requests
+		err := test(context.Background(), parsedNetwork, *subnetBits)
+		if err != nil {
+			l.Fatal(err)
+		}
+		l.Printf("All Tests Pass!")
+		return
+	}
+
+	// Parse address to handle both "port" and "ip:port" formats
+	if !strings.Contains(*listenAddr, ":") {
+		// Just port, bind to all interfaces
+		*listenAddr = ":" + *listenAddr
+	}
 
 	// prep network aware resolver
 	resolver = &DNSResolver{
-		network: getIPNetwork(&cidr.IP),
+		network: getCIDRNetwork(parsedNetwork),
 	}
 
-	var work errgroup.Group
-	if *port != 0 {
-		// show warning if subnet too large
-		if subnetSize.Cmp(big.NewInt(math.MaxInt32)) > 0 {
-			l.Fatalf("proxy range provided larger than MaxInt32")
-		}
-		if subnetSize.Cmp(big.NewInt(maxProxies)) > 0 {
-			l.Fatalf("proxy range provided too large %s > %d", subnetSize.String(), maxProxies)
-		}
-
-		ipList, err := hosts(cidr)
-		check(err)
-
-		// check that random port is outside range of other proxies
-		if *random != 0 && *random >= *port && int(*random) < (int(*port)+len(ipList)) {
-			l.Fatalf("random port %d inside range %d-%d", *random, *port, int(*port)+len(ipList))
-		}
-
-		l.Printf("starting on %s\n", cidr.String())
-		started := 0
-		for num, ip := range ipList {
-			listenPort := num + int(*port)
-			ip := ip // https://golang.org/doc/faq#closures_and_goroutines
-			started++
-
-			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(listenPort))
-			l.Printf("Starting proxy %s using IP: %s\n", addrStr, ip.String())
-			work.Go(func() error {
-				return runProxy(ip, addrStr)
-			})
-		}
-		l.Printf("started %d proxies\n", started)
-	}
-
-	// start random subnet proxy if -subnet-size set
-	if *subnetBits != 0 && *random != 0 {
-		work.Go(func() error {
-			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
-			l.Printf("Starting random subnet egress proxy %s\n", addrStr)
-			return runRandomSubnetProxy(addrStr, proxy, *subnetBits)
-		})
-	}
-
-	// start random proxy if -random set
-	if *random != 0 && *subnetBits == 0 {
-		work.Go(func() error {
-			addrStr := net.JoinHostPort(*listenIP, strconv.Itoa(int(*random)))
-			l.Printf("Starting random egress proxy %s\n", addrStr)
-			return runRandomProxy(cidr, addrStr)
-		})
-	}
-
-	err = work.Wait()
-	check(err)
-}
-
-// check exits the program with a fatal error if err is not nil.
-func check(err error) {
+	// run subnet proxy server
+	l.Printf("Starting subnet egress proxy %s\n", *listenAddr)
+	err = runRandomSubnetProxy(*listenAddr, parsedNetwork, *subnetBits)
 	if err != nil {
 		l.Fatal(err)
 	}

@@ -25,7 +25,7 @@ import (
 //	for {
 //	    num, ok := iter1.Next()
 //	    if !ok { break }
-//	    // Process num - will be in range [0, 1000] but unpredictable order
+//	    // Process num - will be in range [0, 1000) but unpredictable order
 //	}
 type RandomParallelIterator struct {
 	iter         *ParallelIterator
@@ -37,7 +37,7 @@ type RandomParallelIterator struct {
 }
 
 // NewRandomParallelIterator creates a new non-deterministic parallel iterator
-// for the range [low, high]. The iterator will visit each number in the range
+// for the range [low, high). The iterator will visit each number in the range
 // exactly once, but in a randomized order that differs between instances.
 //
 // The randomization works by:
@@ -47,7 +47,7 @@ type RandomParallelIterator struct {
 //
 // Parameters:
 //   - low: The lower bound of the range (inclusive)
-//   - high: The upper bound of the range (inclusive)
+//   - high: The upper bound of the range (exclusive)
 //
 // Returns:
 //   - A new RandomParallelIterator instance
@@ -55,7 +55,7 @@ type RandomParallelIterator struct {
 //
 // Example:
 //
-//	iter, err := NewRandomParallelIterator(big.NewInt(100), big.NewInt(200))
+//	iter, err := NewRandomParallelIterator(big.NewInt(100), big.NewInt(201))
 //	if err != nil {
 //	    return err
 //	}
@@ -64,7 +64,7 @@ type RandomParallelIterator struct {
 //	for {
 //	    num, ok := iter.Next()
 //	    if !ok { break }
-//	    // num will be in [100, 200] but in randomized order
+//	    // num will be in [100, 201) but in randomized order
 //	}
 func NewRandomParallelIterator(low, high *big.Int) (*RandomParallelIterator, error) {
 	if low.Cmp(high) > 0 {
@@ -73,7 +73,6 @@ func NewRandomParallelIterator(low, high *big.Int) (*RandomParallelIterator, err
 
 	// Calculate original range size
 	size := new(big.Int).Sub(high, low)
-	size.Add(size, big.NewInt(1))
 
 	// Generate random offsets using crypto/rand for better randomness
 	maxOffset := new(big.Int).Lsh(big.NewInt(1), 32) // Use 32-bit random offsets
@@ -144,7 +143,7 @@ func (ri *RandomParallelIterator) Next() (*big.Int, bool) {
 	randomizedNum := new(big.Int).Add(originalNum, ri.outputOffset)
 
 	// Map back to original range using modular arithmetic
-	// This ensures the result is always in [originalLow, originalHigh]
+	// This ensures the result is always in [originalLow, originalHigh)
 	randomizedNum.Mod(randomizedNum, ri.size)
 	result := new(big.Int).Add(randomizedNum, ri.originalLow)
 
@@ -174,7 +173,7 @@ func (ri *RandomParallelIterator) High() *big.Int {
 //
 // Parameters:
 //   - low: The lower bound of the range (inclusive)
-//   - high: The upper bound of the range (inclusive)
+//   - high: The upper bound of the range (exclusive)
 //
 // Returns:
 //   - A randomized UniqueRand instance
@@ -199,7 +198,6 @@ func NewRandomUniqueRand(low, high *big.Int) (*RandomUniqueRand, error) {
 
 	// Calculate original range size
 	size := new(big.Int).Sub(high, low)
-	size.Add(size, big.NewInt(1))
 
 	// Generate random offsets
 	maxOffset := new(big.Int).Lsh(big.NewInt(1), 32)
@@ -249,7 +247,7 @@ type RandomUniqueRand struct {
 // Unlike the deterministic UniqueRand.NextAt(), this applies random
 // offsets to make the sequence unpredictable between instances.
 //
-// The index must be in the range [0, size), where size = high - low + 1.
+// The index must be in the range [0, size), where size = high - low.
 //
 // Example:
 //

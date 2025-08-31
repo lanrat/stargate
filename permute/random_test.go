@@ -11,7 +11,7 @@ func TestRandomParallelIterator_NonDeterministic(t *testing.T) {
 	t.Parallel()
 
 	low := big.NewInt(0)
-	high := big.NewInt(99)
+	high := big.NewInt(100)
 
 	// Create two iterators with identical parameters
 	iter1, err := NewRandomParallelIterator(low, high)
@@ -49,7 +49,7 @@ func TestRandomParallelIterator_NonDeterministic(t *testing.T) {
 	}
 
 	// Both sequences should contain the same elements (just verify a few)
-	expectedLen := 100 // [0, 99] inclusive
+	expectedLen := 100 // [0, 100) exclusive
 	if len(seq1) != expectedLen {
 		t.Errorf("expected %d elements, got %d", expectedLen, len(seq1))
 	}
@@ -100,13 +100,13 @@ func TestRandomParallelIterator_BoundsChecking(t *testing.T) {
 			break
 		}
 
-		if num.Cmp(low) < 0 || num.Cmp(high) > 0 {
-			t.Errorf("number %s out of range [%s, %s]", num, low, high)
+		if num.Cmp(low) < 0 || num.Cmp(high) >= 0 {
+			t.Errorf("number %s out of range [%s, %s)", num, low, high)
 		}
 		count++
 	}
 
-	expectedCount := 101 // [50, 150] inclusive
+	expectedCount := 100 // [50, 150) exclusive
 	if count != expectedCount {
 		t.Errorf("expected %d numbers, got %d", expectedCount, count)
 	}
@@ -130,7 +130,7 @@ func TestRandomParallelIterator_SingleElement(t *testing.T) {
 
 	// Test range with single element
 	low := big.NewInt(42)
-	high := big.NewInt(42)
+	high := big.NewInt(43)
 
 	iter, err := NewRandomParallelIterator(low, high)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestRandomUniqueRand_NonDeterministic(t *testing.T) {
 	t.Parallel()
 
 	low := big.NewInt(0)
-	high := big.NewInt(99)
+	high := big.NewInt(100)
 
 	// Create two iterators with identical parameters
 	iter1, err := NewRandomUniqueRand(low, high)
@@ -215,7 +215,7 @@ func TestRandomUniqueRand_BoundsChecking(t *testing.T) {
 		idx := big.NewInt(int64(i))
 		num := iter.NextAt(idx)
 
-		if num.Cmp(low) < 0 || num.Cmp(high) > 0 {
+		if num.Cmp(low) < 0 || num.Cmp(high) >= 0 {
 			t.Errorf("number %s out of range [%s, %s] at index %d", num, low, high, i)
 		}
 	}
@@ -233,8 +233,8 @@ func TestRandomIterators_HelperMethods(t *testing.T) {
 		t.Fatalf("failed to create RandomParallelIterator: %v", err)
 	}
 
-	if rpi.Size().Cmp(big.NewInt(11)) != 0 {
-		t.Errorf("expected size 11, got %s", rpi.Size())
+	if rpi.Size().Cmp(big.NewInt(10)) != 0 {
+		t.Errorf("expected size 10, got %s", rpi.Size())
 	}
 
 	if rpi.Low().Cmp(low) != 0 {
@@ -251,8 +251,8 @@ func TestRandomIterators_HelperMethods(t *testing.T) {
 		t.Fatalf("failed to create RandomUniqueRand: %v", err)
 	}
 
-	if ru.Size().Cmp(big.NewInt(11)) != 0 {
-		t.Errorf("expected size 11, got %s", ru.Size())
+	if ru.Size().Cmp(big.NewInt(10)) != 0 {
+		t.Errorf("expected size 10, got %s", ru.Size())
 	}
 
 	if ru.Low().Cmp(low) != 0 {
@@ -265,7 +265,7 @@ func TestRandomIterators_HelperMethods(t *testing.T) {
 }
 
 func BenchmarkRandomParallelIterator(b *testing.B) {
-	iter, _ := NewRandomParallelIterator(big.NewInt(0), big.NewInt(1<<20))
+	iter, _ := NewRandomParallelIterator(big.NewInt(0), big.NewInt(1<<20+1))
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -276,7 +276,7 @@ func BenchmarkRandomParallelIterator(b *testing.B) {
 }
 
 func BenchmarkRandomUniqueRand(b *testing.B) {
-	iter, _ := NewRandomUniqueRand(big.NewInt(0), big.NewInt(1<<20))
+	iter, _ := NewRandomUniqueRand(big.NewInt(0), big.NewInt(1<<20+1))
 	index := big.NewInt(0)
 
 	b.ResetTimer()
@@ -291,8 +291,8 @@ func BenchmarkRandomUniqueRand(b *testing.B) {
 
 func ExampleRandomParallelIterator() {
 	// Create two random iterators with the same range
-	iter1, _ := NewRandomParallelIterator(big.NewInt(0), big.NewInt(4))
-	iter2, _ := NewRandomParallelIterator(big.NewInt(0), big.NewInt(4))
+	iter1, _ := NewRandomParallelIterator(big.NewInt(0), big.NewInt(5))
+	iter2, _ := NewRandomParallelIterator(big.NewInt(0), big.NewInt(5))
 
 	// They will visit the same numbers but in different orders
 	fmt.Println("Iterator 1:")
@@ -319,9 +319,67 @@ func ExampleRandomParallelIterator() {
 	// Iterator 2: 1 3 0 4 2
 }
 
+func TestRandomParallelIterator_NoSequentialRuns(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name string
+		size *big.Int
+	}{
+		{"size_255", big.NewInt(255)},
+		{"size_256", big.NewInt(256)},
+		{"size_1000", big.NewInt(1000)},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			iter, err := NewRandomParallelIterator(big.NewInt(0), tc.size)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			prev, _ := iter.Next()
+			sequentialCount := 0
+			maxSequential := 0
+
+			// Check first 100 values or size, whichever is smaller
+			checkCount := 100
+			if tc.size.Cmp(big.NewInt(100)) < 0 {
+				checkCount = int(tc.size.Int64())
+			}
+
+			for i := 1; i < checkCount; i++ {
+				curr, ok := iter.Next()
+				if !ok {
+					break
+				}
+
+				// Check if current is sequential to previous
+				diff := new(big.Int).Sub(curr, prev)
+				if diff.Cmp(big.NewInt(1)) == 0 {
+					sequentialCount++
+					if sequentialCount > maxSequential {
+						maxSequential = sequentialCount
+					}
+				} else {
+					sequentialCount = 0
+				}
+
+				prev = curr
+			}
+
+			// Allow at most 2 sequential numbers in a row by chance
+			if maxSequential > 2 {
+				t.Errorf("Found %d sequential numbers in a row for size %s, indicating non-random behavior",
+					maxSequential+1, tc.size.String())
+			}
+		})
+	}
+}
+
 func ExampleRandomUniqueRand() {
 	// Create a random iterator
-	iter, _ := NewRandomUniqueRand(big.NewInt(10), big.NewInt(14))
+	iter, _ := NewRandomUniqueRand(big.NewInt(10), big.NewInt(15))
 
 	// Access values at specific indices - will be randomized per instance
 	for i := 0; i < 5; i++ {

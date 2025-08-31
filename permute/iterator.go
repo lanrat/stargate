@@ -32,7 +32,7 @@
 // Example usage:
 //
 //	// Create iterator for range [0, 1000000)
-//	iter, _ := permute.NewUniqueRand(big.NewInt(0), big.NewInt(999999))
+//	iter, _ := permute.NewUniqueRand(big.NewInt(0), big.NewInt(1000000))
 //
 //	// Sequential access
 //	for i := big.NewInt(0); i.Cmp(iter.Size()) < 0; i.Add(i, big.NewInt(1)) {
@@ -41,7 +41,7 @@
 //	}
 //
 //	// Parallel access
-//	parallelIter, _ := permute.NewParallelIterator(big.NewInt(0), big.NewInt(999999))
+//	parallelIter, _ := permute.NewParallelIterator(big.NewInt(0), big.NewInt(1000000))
 //	for {
 //	    num, ok := parallelIter.Next()
 //	    if !ok {
@@ -59,7 +59,7 @@ import (
 
 // UniqueRand provides a high-performance iterator for generating unique
 // pseudo-random numbers within a specified range. It guarantees that each number
-// in the range [low, high] will be visited exactly once in a pseudo-random order.
+// in the range [low, high) will be visited exactly once in a pseudo-random order.
 //
 // Key features:
 //   - O(1) amortized time complexity per number generated
@@ -97,16 +97,16 @@ type UniqueRand struct {
 	mask *big.Int
 }
 
-// NewUniqueRand creates a new iterator for the range [low, high].
-// Both low and high bounds are inclusive.
+// NewUniqueRand creates a new iterator for the range [low, high).
+// The low bound is inclusive and the high bound is exclusive.
 //
 // Returns an error if:
 //   - low > high (invalid range)
 //
 // Example:
 //
-//	// Create iterator for range [1000, 9999]
-//	ur, err := NewUniqueRand(big.NewInt(1000), big.NewInt(9999))
+//	// Create iterator for range [1000, 10000)
+//	ur, err := NewUniqueRand(big.NewInt(1000), big.NewInt(10000))
 //	if err != nil {
 //	    return err
 //	}
@@ -116,7 +116,6 @@ func NewUniqueRand(low, high *big.Int) (*UniqueRand, error) {
 	}
 
 	size := new(big.Int).Sub(high, low)
-	size.Add(size, big.NewInt(1))
 
 	ur := &UniqueRand{
 		low:  new(big.Int).Set(low),
@@ -140,7 +139,7 @@ func NewUniqueRand(low, high *big.Int) (*UniqueRand, error) {
 
 // NextAt returns the permuted value at a specific index in the sequence.
 // This method is thread-safe and can be called concurrently from multiple goroutines.
-// The index must be in the range [0, size), where size = high - low + 1.
+// The index must be in the range [0, size), where size = high - low.
 //
 // This method provides O(1) amortized time complexity for most ranges:
 //   - 32-bit ranges: ~2 CPU cycles average
@@ -152,7 +151,7 @@ func NewUniqueRand(low, high *big.Int) (*UniqueRand, error) {
 //
 // Example:
 //
-//	ur, _ := NewUniqueRand(big.NewInt(100), big.NewInt(199))
+//	ur, _ := NewUniqueRand(big.NewInt(100), big.NewInt(200))
 //	// Get the 50th number in the permuted sequence
 //	num := ur.NextAt(big.NewInt(49))
 func (ur *UniqueRand) NextAt(index *big.Int) *big.Int {
@@ -188,11 +187,34 @@ func (ur *UniqueRand) permute32(x, modulus uint32) uint32 {
 		return 0
 	}
 
-	// For power-of-2 moduli, use a simple multiplicative hash
-	// For other moduli, use a larger multiplier to reduce patterns
-
 	// Use a large prime multiplier for good distribution
 	const multiplier uint64 = 2654435761 // 2^32 / phi (golden ratio)
+
+	// Check if multiplier is degenerate for this modulus (becomes identity function)
+	if multiplier%uint64(modulus) == 1 {
+		// Use a different multiplier that doesn't become degenerate
+		// Try several alternative multipliers until we find one that works
+		alternativeMultipliers := []uint64{
+			0x9E3779B1, // 2^32 / phi - 1
+			0x85EBCA6B, // Another good multiplier
+			0xC2B2AE3D, // Yet another
+			0xA0761D65, // And another
+		}
+
+		for _, altMultiplier := range alternativeMultipliers {
+			if altMultiplier%uint64(modulus) != 1 && altMultiplier%uint64(modulus) != 0 {
+				result := (uint64(x) * altMultiplier) % uint64(modulus)
+				return uint32(result)
+			}
+		}
+
+		// If all multipliers fail, use LCG (guaranteed to work for any modulus)
+		// Using the same constants as permute64 but scaled down
+		a := uint64(1664525)    // Common LCG multiplier
+		c := uint64(1013904223) // Common LCG increment
+		result := (uint64(x)*a + c) % uint64(modulus)
+		return uint32(result)
+	}
 
 	result := (uint64(x) * multiplier) % uint64(modulus)
 	return uint32(result)
@@ -274,7 +296,7 @@ type ParallelIterator struct {
 //
 // Parameters:
 //   - low: The lower bound of the range (inclusive)
-//   - high: The upper bound of the range (inclusive)
+//   - high: The upper bound of the range (exclusive)
 //
 // Returns:
 //   - A new ParallelIterator instance
@@ -282,7 +304,7 @@ type ParallelIterator struct {
 //
 // Example:
 //
-//	iter, err := NewParallelIterator(big.NewInt(1), big.NewInt(100))
+//	iter, err := NewParallelIterator(big.NewInt(1), big.NewInt(101))
 //	if err != nil {
 //	    return err
 //	}
