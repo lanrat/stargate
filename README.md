@@ -151,3 +151,7 @@ make
 ```
 
 This will produce a statically linked binary that's ready to use.
+
+### Platforms
+
+Stargate makes use of freebind, which allowed for creating a socket with a source IP address on an interface that does not have that IP directly bound to it. This is only available on Linux and FreeBSD. Stargate can work on other platforms, but it will require every address to be previously bound to the interface before running.

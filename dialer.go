@@ -150,7 +150,7 @@ func NewRandomIPIterator(prefix netip.Prefix, cidrBits uint) (*RandomIPDialer, e
 	if subnetCount == 0 {
 		return nil, fmt.Errorf("subnet size is 0: %+v / %d", prefix, cidrBits)
 	}
-	v("we were given network %s with a CIDR of %d. our subnet pool size is %d", prefix, cidrBits, subnetCount)
+	v("creating NewRandomIPIterator network %s with a CIDR of %d, subnet pool size is %d", prefix, cidrBits, subnetCount)
 	it := &RandomIPDialer{
 		prefix:      prefix,
 		cidrBits:    cidrBits,

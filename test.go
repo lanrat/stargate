@@ -20,6 +20,8 @@ const (
 	testTimeout = 30 * time.Second
 	// testParallel is the number of concurrent test workers to run
 	testParallel = 10
+	// testStatusInterval how often to print the status outout when running a test
+	testStatusInterval = time.Second / 4
 )
 
 // testDial represents a test configuration pairing an IP address with its corresponding dialer function.
@@ -71,7 +73,7 @@ func test(ctx context.Context, parsedNetwork netip.Prefix, cidrSize uint) error 
 	statusDone := make(chan bool, 1)
 	if !*verbose {
 		go func() {
-			ticker := time.NewTicker(time.Second / 4)
+			ticker := time.NewTicker(testStatusInterval)
 			defer ticker.Stop()
 			done := false
 			for {
