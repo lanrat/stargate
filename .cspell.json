@@ -13,6 +13,7 @@
         "goreleaser",
         "ldflags",
         "Mersenne",
+        "nonlocal",
         "trimpath"
     ],
     "ignoreWords": [],
