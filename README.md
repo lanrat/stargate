@@ -97,6 +97,33 @@ Distribute connections across multiple /64 subnets within a /48 IPv6 allocation:
 
 This will randomly select from different /64 networks within your /48, providing both IP and subnet-level distribution.
 
+## Routing Setup
+
+Before Stargate can use IP addresses from your subnet, you need to configure your network to route that subnet to the host running Stargate.
+
+**Step 1: Configure subnet routing**
+First, ensure your network infrastructure routes the entire subnet to your host machine. This is typically done at your router or network provider level.
+
+**Step 2: Add local route**
+Once the subnet is routed to your host, tell your operating system that it can bind to any IP in that range by adding a local route:
+
+```shell
+# Example: if 192.0.2.0/24 is routed to interface eth0
+ip -4 route add local 192.0.2.0/24 dev eth0
+```
+
+**Important:** Don't assign individual IPs from the subnet directly to your network interface. This prevents the kernel from reserving addresses as broadcast addresses and keeps them available for Stargate.
+
+**Step 3: Enable non-local binding (if needed)**
+Some systems require enabling non-local binding to allow applications to bind to IPs that aren't directly assigned to interfaces:
+
+```shell
+# For IPv4
+sysctl net.ipv4.ip_nonlocal_bind=1
+# For IPv6
+sysctl net.ipv6.ip_nonlocal_bind=1
+```
+
 ## Download
 
 ### [Precompiled Binaries](https://github.com/lanrat/stargate/releases)
