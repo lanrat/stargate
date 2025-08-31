@@ -21,7 +21,7 @@ release: $(RELEASE_DEPS)
 	fi
 
     # 2. Get the latest git tag, or start at v0.0.0
-	@CURRENT_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	@CURRENT_TAG=$$(git tag -l "v*" | sort -V | tail -1 2>/dev/null || echo "v0.0.0"); \
 	CURRENT_VERSION=$$(echo $$CURRENT_TAG | sed 's/^v//'); \
 	MAJOR=$$(echo $$CURRENT_VERSION | cut -d. -f1); \
 	MINOR=$$(echo $$CURRENT_VERSION | cut -d. -f2); \
