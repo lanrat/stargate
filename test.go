@@ -67,20 +67,27 @@ func test(ctx context.Context, parsedNetwork netip.Prefix, cidrSize uint) error 
 	})
 
 	// print testing status
-	statusStop := make(chan bool)
+	statusStop := make(chan bool, 1)
+	statusDone := make(chan bool, 1)
 	if !*verbose {
-		defer func() { statusStop <- true }()
 		go func() {
+			ticker := time.NewTicker(time.Second / 4)
+			defer ticker.Stop()
+			done := false
 			for {
 				select {
 				case <-statusStop:
+					done = true
+				case <-ticker.C:
+				}
+				testedCount := tested.Load()
+				totalHosts := ipItr.Size()
+				progress := float64(testedCount) / float64(totalHosts) * 100
+				fmt.Printf("\r Testing %d/%d (%.1f%%) failures: %d", testedCount, totalHosts, progress, failed.Load())
+				if done {
 					fmt.Printf("\n") // Clear the status
+					close(statusDone)
 					return
-				default:
-					testedCount := tested.Load()
-					totalHosts := ipItr.Size()
-					progress := float64(testedCount) / float64(totalHosts) * 100
-					fmt.Printf("\r Testing %d/%d (%.1f%%) failures: %d", testedCount, totalHosts, progress, failed.Load())
 				}
 			}
 		}()
@@ -115,7 +122,15 @@ func test(ctx context.Context, parsedNetwork netip.Prefix, cidrSize uint) error 
 
 	// Wait for all goroutines to complete
 	if err := group.Wait(); err != nil {
+		statusStop <- true
 		return err
+	}
+
+	// stop status printing
+	if !*verbose {
+		statusStop <- true
+		// wait for last status print
+		<-statusDone
 	}
 
 	if failedCount := failed.Load(); failedCount > 0 {

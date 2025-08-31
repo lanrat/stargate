@@ -24,7 +24,7 @@ OPTIONS:
      print version and exit
 ```
 
-Stargate now operates as a single SOCKS5 proxy server that randomly selects egress IP addresses from your specified CIDR range. This approach is much more memory-efficient and suitable for large IPv6 ranges.
+Stargate operates as a single SOCKS5 proxy server that randomly selects egress IP addresses from your specified CIDR range. This approach is much more memory-efficient and suitable for large IPv6 ranges.
 
 ## Test Flag - Preventing IP Address Leakage
 
