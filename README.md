@@ -1,5 +1,9 @@
 # Stargate
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/lanrat/stargate)](https://goreportcard.com/report/github.com/lanrat/stargate)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/lanrat/stargate)](https://pkg.go.dev/github.com/lanrat/stargate)
+[![Docker](https://github.com/lanrat/stargate/actions/workflows/docker.yml/badge.svg)](https://github.com/lanrat/stargate/actions/workflows/docker.yml)
+
 Stargate is both a Go library and a TCP SOCKS5 proxy server that can egress traffic from multiple IP addresses within a subnet. It randomly distributes connections across different IP addresses to help avoid rate-limiting and provide load balancing across your available IP range.
 
 This requires the host running stargate to have the subnet routed directly to it.
