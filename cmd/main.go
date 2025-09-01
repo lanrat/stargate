@@ -102,10 +102,12 @@ func main() {
 	totalNetworks := 1 << totalNetworksBits
 	l.Printf("Running with subnet size /%d and /%d prefix resulting in %d egress networks and %d options per network", *subnetBits, cidrBits, totalNetworks, hostsPerNetwork)
 
+	ctx := context.Background()
+
 	// test mode
 	if *runTest {
 		// test requests
-		err := test(context.Background(), parsedNetwork, *subnetBits)
+		err := test(ctx, parsedNetwork, *subnetBits)
 		if err != nil {
 			l.Fatal(err)
 		}
@@ -121,7 +123,7 @@ func main() {
 
 	// run subnet proxy server
 	l.Printf("Starting subnet egress proxy %s\n", *listenAddr)
-	err = runRandomSubnetProxy(*listenAddr, parsedNetwork, *subnetBits)
+	err = runRandomSubnetProxy(ctx, *listenAddr, parsedNetwork, *subnetBits)
 	if err != nil {
 		l.Fatal(err)
 	}

@@ -6,9 +6,8 @@ import (
 	"net/netip"
 	"strconv"
 
-	"github.com/haxii/socks5"
+	"github.com/lanrat/go-socks5"
 	"github.com/lanrat/stargate"
-	"golang.org/x/sync/errgroup"
 )
 
 // runRandomSubnetProxy starts a SOCKS5 proxy server listening on listenAddr that distributes
@@ -17,7 +16,7 @@ import (
 // This is memory efficient for large IPv6 ranges as it doesn't pre-generate all addresses.
 // The function cycles through all available subnets before repeating.
 // Supports both TCP and UDP protocols simultaneously.
-func runRandomSubnetProxy(listenAddr string, parsedNetwork netip.Prefix, cidrSize uint) error {
+func runRandomSubnetProxy(ctx context.Context, listenAddr string, parsedNetwork netip.Prefix, cidrSize uint) error {
 	ipItr, err := stargate.NewRandomIPIterator(parsedNetwork, cidrSize)
 	if err != nil {
 		return err
@@ -34,10 +33,15 @@ func runRandomSubnetProxy(listenAddr string, parsedNetwork netip.Prefix, cidrSiz
 		return err
 	}
 
+	udpDial := func(ctx context.Context, network string, udpClientSrcAddr, targetUDPAddr *net.UDPAddr) (net.Conn, error) {
+		return ipItr.Dial(ctx, network, targetUDPAddr.String())
+	}
+
 	conf := &socks5.Config{
 		Logger:   l,
 		Resolver: NewDNSResolver(getCIDRNetwork(parsedNetwork)),
 		Dial:     ipItr.Dial,
+		DialUDP:  udpDial,
 		BindIP:   net.ParseIP(host),
 		BindPort: port,
 	}
@@ -46,23 +50,9 @@ func runRandomSubnetProxy(listenAddr string, parsedNetwork netip.Prefix, cidrSiz
 		return err
 	}
 
-	// Use errgroup to manage both TCP and UDP listeners
-	var g errgroup.Group
-
-	// Start TCP listener
-	g.Go(func() error {
-		l.Printf("Starting TCP SOCKS5 proxy on %s", listenAddr)
-		return server.ListenAndServe("tcp", listenAddr)
-	})
-
-	// Start UDP listener
-	g.Go(func() error {
-		l.Printf("Starting UDP SOCKS5 proxy on %s", listenAddr)
-		return server.ListenAndServe("udp", listenAddr)
-	})
-
-	// Wait for both listeners, return first error
-	return g.Wait()
+	// Start TCP SOCKS5 proxy (UDP is handled internally by the server when BindPort is set)
+	l.Printf("Starting SOCKS5 proxy on %s", listenAddr)
+	return server.ListenAndServe(ctx, listenAddr)
 }
 
 // DNSResolver implements socks5.NameResolver using the system DNS resolver.
