@@ -8,7 +8,7 @@ before:
 
 builds:
   - id: stargate
-    main: .
+    main: ./cmd/
     binary: stargate
     goos:
       - linux
