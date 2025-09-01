@@ -119,7 +119,7 @@ func createDialerWithSourceIP(ctx context.Context, network, addr string, sourceI
 			ActualIP:    actualIP,
 		}
 	}
-	v("verified connection bound to intended IP: %s", actualIP)
+	//v("verified connection bound to intended IP: %s", actualIP)
 	return conn, nil
 }
 
