@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/lanrat/stargate"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,7 +28,7 @@ const (
 // testDial represents a test configuration pairing an IP address with its corresponding dialer function.
 type testDial struct {
 	ip   net.IP
-	dial DialFunc
+	dial stargate.DialFunc
 }
 
 // test validates that all IP addresses in the given CIDR range can successfully
@@ -35,7 +36,7 @@ type testDial struct {
 // It uses cloudflare.com/cdn-cgi/trace to verify the egress IP address.
 func test(ctx context.Context, parsedNetwork netip.Prefix, cidrSize uint) error {
 	// Create iterator for all host indices
-	ipItr, err := NewRandomIPIterator(parsedNetwork, cidrSize)
+	ipItr, err := stargate.NewRandomIPIterator(parsedNetwork, cidrSize)
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func test(ctx context.Context, parsedNetwork netip.Prefix, cidrSize uint) error 
 
 // testWithDialer performs an HTTP request using the provided dialer and verifies
 // that the egress IP matches the expected IP address by querying cloudflare.com/cdn-cgi/trace.
-func testWithDialer(ctx context.Context, dial DialFunc, expectedIP net.IP) error {
+func testWithDialer(ctx context.Context, dial stargate.DialFunc, expectedIP net.IP) error {
 	ctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
 
@@ -161,7 +162,7 @@ func testWithDialer(ctx context.Context, dial DialFunc, expectedIP net.IP) error
 	resp, err := client.Do(req)
 	if err != nil {
 		// If bindError, then unwrap
-		var bindErr *IPBindError
+		var bindErr *stargate.IPBindError
 		if errors.As(err, &bindErr) {
 			return bindErr
 		}

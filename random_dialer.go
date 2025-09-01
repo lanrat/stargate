@@ -1,4 +1,7 @@
-package main
+// Package stargate provides network connection functionality with randomized source IP addresses.
+// It includes dialers that can bind to random IP addresses within specified CIDR ranges,
+// with built-in verification to prevent IP address leaks and binding errors.
+package stargate
 
 import (
 	"context"

@@ -1,6 +1,6 @@
 //go:build !linux && !freebsd
 
-package main
+package stargate
 
 import "syscall"
 

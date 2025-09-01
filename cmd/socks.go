@@ -4,6 +4,7 @@ import (
 	"net/netip"
 
 	"github.com/haxii/socks5"
+	"github.com/lanrat/stargate"
 )
 
 // runRandomSubnetProxy starts a SOCKS5 proxy server listening on listenAddr that distributes
@@ -12,7 +13,7 @@ import (
 // This is memory efficient for large IPv6 ranges as it doesn't pre-generate all addresses.
 // The function cycles through all available subnets before repeating.
 func runRandomSubnetProxy(listenAddr string, parsedNetwork netip.Prefix, cidrSize uint) error {
-	ipItr, err := NewRandomIPIterator(parsedNetwork, cidrSize)
+	ipItr, err := stargate.NewRandomIPIterator(parsedNetwork, cidrSize)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 //go:build freebsd
 
-package main
+package stargate
 
 import (
 	"fmt"

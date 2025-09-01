@@ -1,4 +1,4 @@
-package main
+package stargate
 
 import (
 	"fmt"
@@ -7,21 +7,23 @@ import (
 )
 
 // broadcastAddrs is a global map that tracks IP addresses identified as broadcast addresses.
-// It is populated by checkHostConflicts and used to prevent binding to these addresses.
+// It is populated by CheckHostConflicts and used to prevent binding to these addresses.
 var broadcastAddrs = make(map[string]bool)
 
-// checkHostConflicts detects if any of the addresses we are going to use are broadcast addresses.
+// CheckHostConflicts detects if any of the addresses we are going to use are broadcast addresses.
 // It populates the global broadcastAddrs map by examining all system network interfaces.
-func checkHostConflicts(prefix *netip.Prefix) error {
+// It returns a list of all conflicting IPs
+func CheckHostConflicts(prefix *netip.Prefix) ([]net.IP, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	conflictIPs := make([]net.IP, 0)
 	for _, i := range interfaces {
 		addrs, err := i.Addrs()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, a := range addrs {
 			ipnet, ok := a.(*net.IPNet)
@@ -34,20 +36,21 @@ func checkHostConflicts(prefix *netip.Prefix) error {
 			}
 			brdIP, err := getBroadcastAddressFromAddr(ipnet)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			brdAddr, ok := netip.AddrFromSlice(brdIP)
 			if !ok {
-				return fmt.Errorf("unable to parse IP to addr: %+v", brdAddr)
+				return nil, fmt.Errorf("unable to parse IP to addr: %+v", brdAddr)
 			}
 			if prefix.Contains(brdAddr) {
 				broadcastAddrs[brdAddr.String()] = true
-				l.Printf("WARNING: interface %s broadcast address is within provided prefix %s", i.Name, brdIP)
+				v("WARNING: interface %s broadcast address is within provided prefix %s", i.Name, brdIP)
+				conflictIPs = append(conflictIPs, brdIP)
 			}
 		}
 	}
 
-	return nil
+	return conflictIPs, nil
 }
 
 // getBroadcastAddressFromAddr calculates the broadcast address from a net.IPNet.

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/haxii/socks5"
+	"github.com/lanrat/stargate"
 )
 
 // Command-line flags
@@ -83,18 +84,25 @@ func main() {
 	// more could be supported by switching from uint64 to big.Int types.
 	// for even with IPv6, using more than 2^64 networks is incredibly unlikely
 	// if someone dares to do this, error
-	totalNetworks := *subnetBits - uint(cidrBits)
-	if totalNetworks > 64 {
-		log.Fatalf("subnet host range too large. Can't run on over 2^64 networks, got 2^%d", totalNetworks)
+	totalNetworksBits := *subnetBits - uint(cidrBits)
+	if totalNetworksBits > 64 {
+		l.Fatalf("subnet host range too large. Can't run on over 2^64 networks, got 2^%d", totalNetworksBits)
 	}
 
+	// set stargate Logger
+	stargate.Logger = v
+
 	// check for IP conflicts
-	err = checkHostConflicts(&parsedNetwork)
+	conflicts, err := stargate.CheckHostConflicts(&parsedNetwork)
 	if err != nil {
 		l.Fatal(err)
 	}
+	for _, ip := range conflicts {
+		l.Printf("Warning: possible IP conflict on %s", ip)
+	}
 
 	hostsPerNetwork := 1 << (maxNetworkBits - *subnetBits)
+	totalNetworks := 1 << totalNetworksBits
 	l.Printf("Running with subnet size /%d and /%d prefix resulting in %d egress networks and %d options per network", *subnetBits, cidrBits, totalNetworks, hostsPerNetwork)
 
 	// test mode
@@ -128,7 +136,7 @@ func main() {
 }
 
 // v logs a message if verbose logging is enabled.
-func v(format string, a ...interface{}) {
+func v(format string, a ...any) {
 	if *verbose {
 		l.Printf(format, a...)
 	}

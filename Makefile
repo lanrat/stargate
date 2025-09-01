@@ -9,7 +9,7 @@ SOURCES := $(shell find . -type f -name "*.go")
 .PHONY: all fmt clean docker lint
 
 stargate: ${SOURCES} go.mod go.sum
-	CGO_ENABLED=0 go build -ldflags "-w -s -X main.version=${VERSION}" -trimpath -o $@
+	CGO_ENABLED=0 go build -ldflags "-w -s -X main.version=${VERSION}" -trimpath -o $@ cmd/*.go
 
 clean:
 	rm stargate

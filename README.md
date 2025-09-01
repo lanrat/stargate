@@ -1,10 +1,10 @@
 # Stargate
 
-Stargate is a TCP SOCKS5 proxy server that can egress traffic from multiple IP addresses within a subnet. It randomly distributes connections across different IP addresses to help avoid rate-limiting and provide load balancing across your available IP range.
+Stargate is both a Go library and a TCP SOCKS5 proxy server that can egress traffic from multiple IP addresses within a subnet. It randomly distributes connections across different IP addresses to help avoid rate-limiting and provide load balancing across your available IP range.
 
 This requires the host running stargate to have the subnet routed directly to it.
 
-If you have an IPv6 subnet, stargate can allow you to make full use of it by any program that can speak SOCKS.
+If you have an IPv6 subnet, stargate can allow you to make full use of it by any program that can speak SOCKS, or you can use the library directly in your Go applications.
 
 ## Usage
 
@@ -155,3 +155,73 @@ This will produce a statically linked binary that's ready to use.
 ### Platforms
 
 Stargate makes use of freebind, which allowed for creating a socket with a source IP address on an interface that does not have that IP directly bound to it. This is only available on Linux and FreeBSD. Stargate can work on other platforms, but it will require every address to be previously bound to the interface before running.
+
+## Go Library
+
+You can use Stargate as a Go library in your applications to make HTTP requests or other network connections using random source IP addresses:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "net/http"
+    "net/netip"
+    "time"
+
+    "github.com/lanrat/stargate"
+)
+
+func main() {
+    // Parse your CIDR range
+    prefix, err := netip.ParsePrefix("192.0.2.0/24")
+    if err != nil {
+        panic(err)
+    }
+
+    // Create a RandomIPDialer for the subnet
+    dialer, err := stargate.NewRandomIPIterator(prefix, 32)
+    if err != nil {
+        panic(err)
+    }
+
+    // Create an HTTP client that uses random source IPs
+    client := &http.Client{
+        Transport: &http.Transport{
+            DialContext: dialer.Dial,
+        },
+        Timeout: 10 * time.Second,
+    }
+
+    // Make requests - each will use a different random IP
+    for i := 0; i < 5; i++ {
+        resp, err := client.Get("https://httpbin.org/ip")
+        if err != nil {
+            fmt.Printf("Request %d failed: %v\n", i+1, err)
+            continue
+        }
+        resp.Body.Close()
+        fmt.Printf("Request %d: Status %d\n", i+1, resp.StatusCode)
+    }
+}
+```
+
+You can also get the next random IP and DialFunc separately:
+
+```go
+// Get next random IP and dialer function
+ip, dialFunc, err := dialer.NextDial()
+if err != nil {
+    panic(err)
+}
+
+fmt.Printf("Next egress IP will be: %s\n", ip)
+
+// Use the dial function directly
+conn, err := dialFunc(context.Background(), "tcp", "example.com:80")
+if err != nil {
+    panic(err)
+}
+defer conn.Close()
+```
