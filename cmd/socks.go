@@ -36,7 +36,7 @@ func runRandomSubnetProxy(listenAddr string, parsedNetwork netip.Prefix, cidrSiz
 
 	conf := &socks5.Config{
 		Logger:   l,
-		Resolver: resolver,
+		Resolver: NewDNSResolver(getCIDRNetwork(parsedNetwork)),
 		Dial:     ipItr.Dial,
 		BindIP:   net.ParseIP(host),
 		BindPort: port,
@@ -69,19 +69,46 @@ func runRandomSubnetProxy(listenAddr string, parsedNetwork netip.Prefix, cidrSiz
 // It ensures that domain names are resolved to the same IP family (IPv4 or IPv6)
 // as the proxy's egress IP.
 type DNSResolver struct {
-	network string
+	network  string
+	resolver net.Resolver
+}
+
+func NewDNSResolver(network string) *DNSResolver {
+	d := &DNSResolver{
+		network: network,
+	}
+	return d
 }
 
 // Resolve resolves a domain name to an IP address using the system DNS resolver.
 // It ensures the resolved IP is in the same address family (IPv4 or IPv6) as specified
 // by the network field, which helps maintain consistency with the proxy's egress IP.
-// TODO use context for name resolution
-func (d DNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
-	//v("resolving %q: %q", d.network, name)
-	addr, err := net.ResolveIPAddr(d.network, name)
+func (d *DNSResolver) Resolve(ctx context.Context, name string) (context.Context, net.IP, error) {
+	addrs, err := d.resolver.LookupIPAddr(ctx, name)
 	if err != nil {
 		return ctx, nil, err
 	}
-	v("resolved %q to %q", name, addr.IP.String())
-	return ctx, addr.IP, err
+
+	// Filter addresses by the desired IP family
+	for _, addr := range addrs {
+		if d.network == "ip4" && addr.IP.To4() != nil {
+			v("resolved %q to %q", name, addr.IP.String())
+			return ctx, addr.IP, nil
+		}
+		if d.network == "ip6" && addr.IP.To4() == nil && addr.IP.To16() != nil {
+			v("resolved %q to %q", name, addr.IP.String())
+			return ctx, addr.IP, nil
+		}
+	}
+
+	return ctx, nil, &net.AddrError{Err: "no suitable address found", Addr: name}
+}
+
+// getCIDRNetwork returns "ip4" for IPv4 addresses or "ip6" for IPv6 addresses.
+// This is used for DNS resolution context.
+func getCIDRNetwork(prefix netip.Prefix) string {
+	if prefix.Addr().Is4() {
+		return "ip4"
+	}
+	return "ip6"
 }

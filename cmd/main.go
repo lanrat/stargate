@@ -11,7 +11,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/haxii/socks5"
 	"github.com/lanrat/stargate"
 )
 
@@ -28,8 +27,6 @@ var (
 var (
 	// l is the logger instance used throughout the application
 	l = log.New(os.Stderr, "", log.LstdFlags)
-	// resolver is the DNS resolver instance for SOCKS5 connections
-	resolver socks5.NameResolver
 	// version is the application version string, set at build time
 	version = "dev"
 )
@@ -122,11 +119,6 @@ func main() {
 		*listenAddr = ":" + *listenAddr
 	}
 
-	// prep network aware resolver
-	resolver = &DNSResolver{
-		network: getCIDRNetwork(parsedNetwork),
-	}
-
 	// run subnet proxy server
 	l.Printf("Starting subnet egress proxy %s\n", *listenAddr)
 	err = runRandomSubnetProxy(*listenAddr, parsedNetwork, *subnetBits)
@@ -145,13 +137,4 @@ func v(format string, a ...any) {
 // showVersion returns a formatted version string for display.
 func showVersion() string {
 	return fmt.Sprintf("Version: %s", version)
-}
-
-// getCIDRNetwork returns "ip4" for IPv4 addresses or "ip6" for IPv6 addresses.
-// This is used for DNS resolution context.
-func getCIDRNetwork(prefix netip.Prefix) string {
-	if prefix.Addr().Is4() {
-		return "ip4"
-	}
-	return "ip6"
 }
