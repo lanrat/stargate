@@ -17,7 +17,7 @@ import (
 
 // Command-line flags
 var (
-	listenAddr   = flag.String("listen", "localhost:1080", "listen on specified [IP:]port (e.g., '1337', '127.0.0.1:8080', '[::1]:1080')")
+	listenAddr   = flag.String("listen", "127.0.0.1:1080", "listen on specified IP:port (e.g., '127.0.0.1:1337', '127.0.0.1:8080', '[::1]:1080').")
 	subnetBits   = flag.Uint("subnet-size", 0, "CIDR prefix length for random subnet proxy (e.g., 64 for /64 IPv6 subnets)")
 	verbose      = flag.Bool("verbose", false, "enable verbose logging")
 	printVersion = flag.Bool("version", false, "print version and exit")
@@ -145,4 +145,13 @@ func v(format string, a ...any) {
 // showVersion returns a formatted version string for display.
 func showVersion() string {
 	return fmt.Sprintf("Version: %s", version)
+}
+
+// getCIDRNetwork returns "ip4" for IPv4 addresses or "ip6" for IPv6 addresses.
+// This is used for DNS resolution context.
+func getCIDRNetwork(prefix netip.Prefix) string {
+	if prefix.Addr().Is4() {
+		return "ip4"
+	}
+	return "ip6"
 }

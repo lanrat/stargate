@@ -15,6 +15,7 @@
         "golangci",
         "GOPROXY",
         "goreleaser",
+        "haxii",
         "ldflags",
         "Mersenne",
         "netip",

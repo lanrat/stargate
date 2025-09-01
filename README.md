@@ -4,7 +4,7 @@
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/lanrat/stargate)](https://pkg.go.dev/github.com/lanrat/stargate)
 [![Docker](https://github.com/lanrat/stargate/actions/workflows/docker.yml/badge.svg)](https://github.com/lanrat/stargate/actions/workflows/docker.yml)
 
-Stargate is both a Go library and a TCP SOCKS5 proxy server that can egress traffic from multiple IP addresses within a subnet. It randomly distributes connections across different IP addresses to help avoid rate-limiting and provide load balancing across your available IP range.
+Stargate is both a Go library and a SOCKS5 proxy server that can egress traffic from multiple IP addresses within a subnet. It supports both TCP CONNECT and UDP ASSOCIATE operations, randomly distributing connections across different IP addresses to help avoid rate-limiting and provide load balancing across your available IP range.
 
 This requires the host running stargate to have the subnet routed directly to it.
 
@@ -17,7 +17,7 @@ Usage of ./stargate: [OPTION]... CIDR
  CIDR example: "192.0.2.0/24"
 OPTIONS:
   -listen string
-     listen on specified [IP:]port (e.g., '1337', '127.0.0.1:8080', '[::1]:1080') (default "localhost:1080")
+     listen on specified IP:port (e.g., '127.0.0.1:1337', '127.0.0.1:8080', '[::1]:1080'). (default "127.0.0.1:1080")
   -subnet-size uint
      CIDR prefix length for random subnet proxy (e.g., 64 for /64 IPv6 subnets)
   -test
@@ -28,7 +28,16 @@ OPTIONS:
      print version and exit
 ```
 
-Stargate operates as a single SOCKS5 proxy server that randomly selects egress IP addresses from your specified CIDR range. This approach is much more memory-efficient and suitable for large IPv6 ranges.
+Stargate operates as a single SOCKS5 proxy server that supports both TCP and UDP protocols, randomly selecting egress IP addresses from your specified CIDR range. This approach is much more memory-efficient and suitable for large IPv6 ranges.
+
+## Protocol Support
+
+Stargate supports the full SOCKS5 specification:
+
+- **TCP CONNECT**: Standard TCP proxy connections
+- **UDP ASSOCIATE**: UDP packet relay for applications that need UDP support
+
+Both TCP and UDP listeners run simultaneously on the same port, allowing clients to use either protocol as needed.
 
 ## Test Flag - Preventing IP Address Leakage
 
